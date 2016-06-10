@@ -2,15 +2,18 @@ package com.mvrt.bullseye;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.AsyncTaskLoader;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import com.mvrt.bullseye.util.Notifier;
@@ -26,6 +29,8 @@ import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
+import java.util.Map;
+
 public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2{
 
     CameraBridgeViewBase cvCameraView;
@@ -34,7 +39,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     private boolean cv_initialized = false;
 
-    Mat srcMat, hsvMat, filteredMat;
+    Mat srcMat;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,6 +70,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     public void onDestroy() {
         super.onDestroy();
+        Notifier.log(this, Log.ERROR, "FINISHED");
         if (cvCameraView != null)cvCameraView.disableView();
     }
 
@@ -77,19 +83,11 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     }
 
     public void onCameraViewStopped() {
+        Notifier.log(this, Log.WARN, "CAMERA VIEW STOPPED");
     }
 
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
         srcMat = inputFrame.rgba();
-
-//        Imgproc.cvtColor(srcMat, hsvMat, Imgproc.COLOR_RGB2HSV);
-//
-//        Scalar LOWER_BOUNDS = new Scalar(0,0,105);
-//        Scalar UPPER_BOUNDS = new Scalar(0,0,255);
-//
-//        Core.inRange(hsvMat, LOWER_BOUNDS, UPPER_BOUNDS, filteredMat);
-//
-//        return filteredMat;
         return srcMat;
     }
 
@@ -112,8 +110,6 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         cv_initialized = true;
 
         srcMat = new Mat();
-        hsvMat = new Mat();
-        filteredMat = new Mat();
 
         if(isCameraPermissionGranted()) {
             cvCameraView.enableView();

@@ -1,6 +1,7 @@
 package com.mvrt.bullseye.util;
 
 import android.app.Activity;
+import android.content.Context;
 import android.support.design.widget.Snackbar;
 import android.util.Log;
 import android.view.View;
@@ -29,7 +30,7 @@ public class Notifier {
         }
     }
 
-    public static void toast(Activity act, String toastText, int toastTime){
+    public static void toast(Context act, String toastText, int toastTime){
         Toast.makeText(act, toastText, toastTime).show();
     }
 

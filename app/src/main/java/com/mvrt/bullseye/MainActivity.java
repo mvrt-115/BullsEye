@@ -58,7 +58,12 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     @Override
     public void onPause() {
         super.onPause();
-        if (cvCameraView != null) cvCameraView.disableView();
+        mvrtCameraView.closeCamera();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
         mvrtCameraView.closeCamera();
     }
 
@@ -96,15 +101,14 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
         srcMat = new Mat();
 
-        cvCameraView.enableView();
+        if(mvrtCameraView != null)mvrtCameraView.init();
     }
 
     private void initCamera() {
         if (!isCameraPermissionGranted()) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, REQUEST_PERMISSIONS_CAMERA);
         } else {
-            //OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_1_0, this, cvLoaderCallback);
-            if(mvrtCameraView != null)mvrtCameraView.init();
+            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_1_0, this, cvLoaderCallback);
         }
     }
 

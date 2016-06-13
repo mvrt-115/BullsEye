@@ -14,8 +14,8 @@ import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
-import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
+import android.media.Image;
 import android.media.ImageReader;
 import android.support.v4.app.ActivityCompat;
 import android.util.AttributeSet;
@@ -27,16 +27,18 @@ import android.widget.Toast;
 
 import com.mvrt.bullseye.util.Notifier;
 
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.imgproc.Imgproc;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-public class MVRTCameraView extends AutoFitTextureView implements TextureView.SurfaceTextureListener {
+public class MVRTCameraView extends AutoFitTextureView implements TextureView.SurfaceTextureListener, ImageReader.OnImageAvailableListener {
 
     private CameraDevice cameraDevice;
     private CameraManager cameraManager;
@@ -85,14 +87,15 @@ public class MVRTCameraView extends AutoFitTextureView implements TextureView.Su
             int maxPreviewHeight = displaySize.y;
 
             Size largest = Collections.max(
-                    Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)),
+                    Arrays.asList(map.getOutputSizes(ImageFormat.YUV_420_888)),
                     new CompareSizesByArea());
 
             previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class),
                     width, height, maxPreviewWidth,
                     maxPreviewHeight, largest);
 
-//            imageReader = ImageReader.newInstance(largest.getWidth(), largest.getHeight(), ImageFormat.JPEG, 2);
+            imageReader = ImageReader.newInstance(previewSize.getWidth(), previewSize.getHeight(), ImageFormat.YUV_420_888, 2);
+            imageReader.setOnImageAvailableListener(this, null);
 
             setAspectRatio(previewSize.getWidth(), previewSize.getHeight());
 
@@ -132,8 +135,10 @@ public class MVRTCameraView extends AutoFitTextureView implements TextureView.Su
     }
 
     public void closeCamera(){
+        Log.d("MVRT", "Closing Camera");
         cameraPreviewSession.close();
         cameraDevice.close();
+        imageReader.close();
     }
 
     long exposureTime = 14000000; /** 7/500 seconds -> tested OPTIMAL (6/12/16) by @akhil99 */
@@ -147,7 +152,6 @@ public class MVRTCameraView extends AutoFitTextureView implements TextureView.Su
     private void onCameraOpened(CameraDevice camera){
         cameraDevice = camera;
         try {
-
             cameraPreviewRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             cameraPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
             cameraPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF);
@@ -157,10 +161,12 @@ public class MVRTCameraView extends AutoFitTextureView implements TextureView.Su
             cameraPreviewRequestBuilder.set(CaptureRequest.SENSOR_SENSITIVITY, iso);
 
             Surface surface = new Surface(getSurfaceTexture());
+            Surface surfTwo = imageReader.getSurface();
 
             cameraPreviewRequestBuilder.addTarget(surface);
+            cameraPreviewRequestBuilder.addTarget(surfTwo);
 
-            camera.createCaptureSession(Arrays.asList(surface), cameraCaptureStateCallback, null);
+            camera.createCaptureSession(Arrays.asList(surface, surfTwo), cameraCaptureStateCallback, null);
 
         }catch(CameraAccessException cae){ cae.printStackTrace(); }
 
@@ -182,16 +188,7 @@ public class MVRTCameraView extends AutoFitTextureView implements TextureView.Su
 
         @Override
         public void onConfigureFailed(CameraCaptureSession session) {
-            Notifier.toast(getContext(), "hello!", Toast.LENGTH_LONG);
-        }
-    };
-
-    CameraCaptureSession.CaptureCallback captureCallback = new CameraCaptureSession.CaptureCallback() {
-        @Override
-        public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
-            super.onCaptureCompleted(session, request, result);
-
-
+            Notifier.toast(getContext(), "Capture Session Configuration Failed", Toast.LENGTH_LONG);
         }
     };
 
@@ -203,7 +200,7 @@ public class MVRTCameraView extends AutoFitTextureView implements TextureView.Su
 
         @Override
         public void onDisconnected(CameraDevice camera) {
-
+            closeCamera();
         }
 
         @Override
@@ -268,6 +265,36 @@ public class MVRTCameraView extends AutoFitTextureView implements TextureView.Su
 
     }
 
+    @Override
+    public void onImageAvailable(ImageReader reader) {
+        Image image = reader.acquireLatestImage();
+        if(image == null)return;
+
+        Image.Plane Y = image.getPlanes()[0];
+        Image.Plane U = image.getPlanes()[1];
+        Image.Plane V = image.getPlanes()[2];
+
+        int Yb = Y.getBuffer().remaining();
+        int Ub = U.getBuffer().remaining();
+        int Vb = V.getBuffer().remaining();
+
+        byte[] data = new byte[Yb + Ub + Vb];
+
+        Y.getBuffer().get(data, 0, Yb);
+        U.getBuffer().get(data, Yb, Ub);
+        V.getBuffer().get(data, Yb+ Ub, Vb);
+
+        Mat mat = new Mat(image.getHeight() + image.getHeight()/2, image.getWidth(), CvType.CV_8UC1);
+        mat.put(0, 0, data);
+
+        Mat newMat = new Mat(mat.size(), CvType.CV_8UC3);
+        Imgproc.cvtColor(mat, newMat, Imgproc.COLOR_YUV2RGB_I420);
+
+        Log.d("MVRT", Arrays.toString(newMat.get(0, 0)));
+
+        image.close();
+    }
+ 
     /**
      * Compares two {@code Size}s based on their areas.
      * @author Google

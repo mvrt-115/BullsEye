@@ -12,9 +12,18 @@
         android:layout_height="match_parent">
 
         <com.mvrt.bullseye.MVRTCameraView
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="match_parent"
+            android:elevation="1dp"
             android:id="@+id/mvrt_cameraview" />
+
+        <com.mvrt.bullseye.ProcessingOutputView
+            android:layout_width="300dp"
+            android:layout_height="200dp"
+            android:elevation="2dp"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentBottom="true"
+            android:id="@+id/mvrt_processingoutput" />
 
     </RelativeLayout>
 

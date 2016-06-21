@@ -3,12 +3,9 @@ package com.mvrt.bullseye;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
-import android.hardware.camera2.CameraAccessException;
-import android.hardware.camera2.CameraCaptureSession;
-import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
-import android.hardware.camera2.CaptureRequest;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -18,26 +15,16 @@ import android.view.View;
 
 import com.mvrt.bullseye.util.Notifier;
 
-import org.opencv.android.BaseLoaderCallback;
-import org.opencv.android.Camera2Renderer;
-import org.opencv.android.CameraBridgeViewBase;
-import org.opencv.android.JavaCameraView;
-import org.opencv.android.LoaderCallbackInterface;
-import org.opencv.android.OpenCVLoader;
-import org.opencv.core.Mat;
-
-public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
-
-    private CameraBridgeViewBase cvCameraView;
-    private CaptureRequest.Builder cameraPreviewRequestBuilder;
-    private CaptureRequest cameraPreviewRequest;
-
+public class MainActivity extends AppCompatActivity  {
 
     private static final int REQUEST_PERMISSIONS_CAMERA = 1;
 
-    Mat srcMat;
+    MVRTCameraView cameraView;
+    ProcessingOutputView processingOutputView;
 
-    MVRTCameraView mvrtCameraView;
+    BullseyeCameraManager bullseyeCameraManager;
+
+    CameraPermissionsListener listener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,25 +33,30 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
         setUIFlags();
 
-        mvrtCameraView = (MVRTCameraView)findViewById(R.id.mvrt_cameraview);
+        cameraView = (MVRTCameraView)findViewById(R.id.mvrt_cameraview);
+        processingOutputView = (ProcessingOutputView)findViewById(R.id.mvrt_processingoutput);
+
+        bullseyeCameraManager = new BullseyeCameraManager(getApplicationContext(), cameraView, processingOutputView);
+        listener = bullseyeCameraManager;
     }
 
     @Override
-    public void onResume() {
+    public void onResume(){
         super.onResume();
         initCamera();
+        bullseyeCameraManager.init();
     }
 
     @Override
-    public void onPause() {
+    public void onPause(){
         super.onPause();
-        mvrtCameraView.closeCamera();
+        bullseyeCameraManager.close();
     }
 
     @Override
-    public void onDestroy() {
+    public void onDestroy(){
         super.onDestroy();
-        mvrtCameraView.closeCamera();
+        bullseyeCameraManager.close();
     }
 
     private void setUIFlags() {
@@ -72,97 +64,43 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_FULLSCREEN);
     }
 
-    public void onCameraViewStarted(int width, int height) {
-    }
-
-    public void onCameraViewStopped() {
-        Notifier.log(this, Log.WARN, "Camera View Stopped");
-    }
-
-    public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
-        srcMat = inputFrame.rgba();
-        return srcMat;
-    }
-
-    private BaseLoaderCallback cvLoaderCallback = new BaseLoaderCallback(this) {
-        @Override
-        public void onManagerConnected(int status) {
-            switch (status) {
-                case LoaderCallbackInterface.SUCCESS:
-                    onCVLoaded();
-                    break;
-            }
-            super.onManagerConnected(status);
-        }
-    };
-
-    private void onCVLoaded() {
-        Notifier.log(MainActivity.this, Log.INFO, "OpenCV Library Loaded");
-
-        srcMat = new Mat();
-
-        if(mvrtCameraView != null)mvrtCameraView.init();
-    }
-
+    /**
+     * Initializes camera by ensuring permissions are granted, then
+     */
     private void initCamera() {
-        if (!isCameraPermissionGranted()) {
+        //check if we have permissions
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            //if we don't, request permissions
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, REQUEST_PERMISSIONS_CAMERA);
         } else {
-            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_1_0, this, cvLoaderCallback);
+            //permissions have been granted
+            CameraManager cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+            listener.onCameraPermissionsGranted(cameraManager);
         }
     }
 
-    private boolean isCameraPermissionGranted(){
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
-    }
-
+    /**
+     * Called on permissions request result, called from initCamera() if needed
+     * Calls initCamera() again on success
+     * */
     @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
         switch (requestCode) {
             case REQUEST_PERMISSIONS_CAMERA: {
-                if(cvCameraView != null)cvCameraView.disableView();
                 if (grantResults.length > 0  && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Notifier.log(this, Log.INFO, "Yay! We got permission!");
+                    Notifier.log(Log.INFO, this, "Yay! We got permission!");
                     initCamera();
                 } else {
                     Notifier.snack(this, "We need your permission to use the camera :(", Snackbar.LENGTH_LONG);
                 }
-                return;
             }
         }
     }
 
-//    long exposureTime = 100;
-//    long frameDuration = 1000;
-//    int iso = 2000;
-//
-//    CameraDevice.StateCallback cameraCallback = new CameraDevice.StateCallback() {
-//        @Override
-//        public void onOpened(CameraDevice camera) {
-//            try {
-//                cameraPreviewRequestBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
-//                cameraPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
-//                cameraPreviewRequestBuilder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, exposureTime);
-//               // cameraPreviewRequestBuilder.set(CaptureRequest.SENSOR_FRAME_DURATION, frameDuration);
-//                cameraPreviewRequestBuilder.set(CaptureRequest.SENSOR_SENSITIVITY, iso);
-//
-//
-//
-//                Notifier.log(MainActivity.this, Log.DEBUG, "Camera Capture Requests Set");
-//            } catch (CameraAccessException e) {
-//                e.printStackTrace();
-//            }
-//        }
-//
-//        @Override
-//        public void onDisconnected(CameraDevice camera) {
-//
-//        }
-//
-//        @Override
-//        public void onError(CameraDevice camera, int error) {
-//
-//        }
-//    };
+
+    public interface CameraPermissionsListener{
+        void onCameraPermissionsGranted(CameraManager manager);
+    }
+
 
 }

@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 
-package com.mvrt.bullseye;
+package com.mvrt.bullseye.util;
  
 import android.content.Context;
 import android.util.AttributeSet;
+import android.util.Log;
+import android.util.Size;
 import android.view.TextureView;
  
 /**
@@ -52,10 +54,20 @@ public class AutoFitTextureView extends TextureView {
         if (width < 0 || height < 0) {
             throw new IllegalArgumentException("Size cannot be negative.");
         }
+
         mRatioWidth = width;
         mRatioHeight = height;
+
+        Notifier.log(this, "set aspect ratio: " + mRatioWidth + " / " + mRatioHeight);
+
         requestLayout();
     }
+
+    public Size getAspectRatio() {
+        if(mRatioHeight == 0 || mRatioWidth == 0)return new Size(getWidth(), getHeight());
+        else return new Size(mRatioWidth, mRatioHeight);
+    }
+
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {

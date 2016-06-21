@@ -9,23 +9,38 @@ import android.widget.Toast;
 
 public class Notifier {
 
-    public static void log(Activity act, int logType, String logText){
+    public static final String LOG_TAG = "MVRTLOG";
+
+    public static void log(Object obj, String logText){
+        log(Log.DEBUG, obj.getClass(), logText);
+    }
+
+    public static void log(Class c, String logText){
+        log(Log.DEBUG, c, logText);
+    }
+
+    public static void log(int logType, Object obj, String logText){
+        log(logType, obj.getClass(), logText);
+    }
+
+    public static void log(int logType, Class c, String logText){
+        logText =  c.getName() + " -> " + logText;
         switch(logType){
             case Log.DEBUG:
-                Log.d(act.getLocalClassName(), logText);
+                Log.d(LOG_TAG, logText);
                 break;
             case Log.ERROR:
-                Log.e(act.getLocalClassName(), logText);
+                Log.e(LOG_TAG, logText);
                 break;
             case Log.VERBOSE:
-                Log.v(act.getLocalClassName(), logText);
+                Log.v(LOG_TAG, logText);
                 break;
             case Log.WARN:
-                Log.w(act.getLocalClassName(), logText);
+                Log.w(LOG_TAG, logText);
                 break;
             case Log.INFO:
             default:
-                Log.i(act.getLocalClassName(), logText);
+                Log.i(LOG_TAG, logText);
                 break;
         }
     }

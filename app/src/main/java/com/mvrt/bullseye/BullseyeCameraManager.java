@@ -1,10 +1,13 @@
 package com.mvrt.bullseye;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
+import android.media.ImageReader;
+import android.util.Log;
 import android.util.Size;
 import android.view.Surface;
 
@@ -13,7 +16,6 @@ import com.mvrt.bullseye.util.Notifier;
 
 import org.opencv.core.Mat;
 
-import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -26,6 +28,7 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
     CameraDevice cameraDevice;
     Size cameraCaptureSize;
     Surface previewSurface;
+    ImageReader imageReader;
     CameraCaptureSession cameraCaptureSession;
     CaptureRequest.Builder cameraCaptureRequestBuilder;
 
@@ -43,6 +46,7 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
 
     public void init(){
         loadCV();
+        state = new State();
         processor.setProcessedMatListener(this);
     }
 
@@ -64,20 +68,35 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
         outputView.init(cameraCaptureSize);
     }
 
+    public void initProcessor(){
+        processor.init(cameraCaptureSize, this);
+    }
+
     public void initCapture(){
         if(state.get(State.CAPTURE_INITIALIZED))return; //just make sure we haven't initialized capture already
         CameraUtils.initCapture(cameraCaptureSize, cameraDevice, this, previewSurface);
     }
+
     public void startCapture(){
         CameraUtils.startCapture(cameraCaptureSession, cameraCaptureRequestBuilder);
     }
 
     public void close(){
-        if(cameraDevice != null)cameraDevice.close();
-        if(previewSurface != null)previewSurface.release();
-        if(cameraCaptureSession != null)cameraCaptureSession.close();
-        outputView.close();
-        cameraView.close();
+        if(cameraCaptureSession != null){
+            cameraCaptureSession.close();
+            cameraCaptureSession = null;
+        }
+
+        if(cameraDevice != null){
+            cameraDevice.close();
+            cameraDevice = null;
+        }
+
+        if(imageReader != null){
+            imageReader.close();
+            imageReader = null;
+        }
+        processor.close();
     }
 
     long exposureTime = 14000000; /** 7/500 seconds -> tested OPTIMAL (6/12/16) by @akhil99 */
@@ -119,6 +138,7 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
     @Override
     public void onCameraDisconnected(CameraDevice cameraDevice) {
         close();
+        Log.d("MVRT", "Camera Disconnected");
     }
     //endregion
 
@@ -145,20 +165,20 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
     }
 
     @Override
-    public void onCaptureSessionConfigured(CameraCaptureSession session, CaptureRequest.Builder captureRequestBuilder) {
+    public void onCaptureSessionConfigured(CameraCaptureSession session, CaptureRequest.Builder captureRequestBuilder, ImageReader imgReader) {
         cameraCaptureSession = session;
         cameraCaptureRequestBuilder = captureRequestBuilder;
+        imageReader = imgReader;
         state.setCompleted(State.CAPTURE_INITIALIZED);
     }
 
     @Override
-    public void onImageCaptured(Mat rgbMat) {
-        processor.processMat(rgbMat);
+    public void onImageCaptured(byte[] data) {
+        processor.processMat(data);
     }
 
-    @Override
-    public void onMatProcessed(Mat out) {
-        outputView.setMat(out);
+    public void onImgProcessed(Bitmap out) {
+        outputView.setBitmap(out);
     }
 
     //endregion
@@ -174,9 +194,10 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
             calculateCaptureSize();
         } else if(key == State.CAPTURE_SIZE_CALCULATED){
             initViews();
-        } else if(key == State.CAPTURE_INITIALIZED){
+        } else if(key == State.CAPTURE_INITIALIZED) {
             startCapture();
         } else if(state.get(State.CV_LOADED) && state.get(State.CAMERA_OPENED) && state.get(State.VIEWS_INITIALIZED)){
+            initProcessor();
             initCapture();
         }
     }
@@ -189,6 +210,7 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
         public static final int VIEWS_INITIALIZED = 4;
         public static final int CAPTURE_INITIALIZED = 5;
         public static final int CAPTURE_STARTED = 6;
+        public static final int PROCESSOR_INITIALIZED = 7;
 
         Map<Integer, Boolean> currentState;
 
@@ -221,6 +243,7 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
             case State.VIEWS_INITIALIZED: return "Views Initialized";
             case State.CAPTURE_INITIALIZED: return "Capture Initialized";
             case State.CAPTURE_STARTED: return "Capture Started";
+            case State.PROCESSOR_INITIALIZED: return "Processor Initialized";
             default: return "Unknown State Key";
         }
     }

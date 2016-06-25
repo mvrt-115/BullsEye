@@ -14,6 +14,7 @@ import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
@@ -23,13 +24,9 @@ import android.view.Surface;
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
-import org.opencv.core.CvType;
-import org.opencv.core.Mat;
-import org.opencv.imgproc.Imgproc;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 public class CameraUtils {
 
@@ -98,12 +95,14 @@ public class CameraUtils {
             Notifier.log(CameraUtils.class, "Size Calculated: " + cameraOutputSize.toString());
 
             listener.onCameraSizeCalculated(cameraOutputSize);
+
+
         }catch(CameraAccessException e){
             Notifier.log(Log.ERROR, CameraUtils.class, e.getMessage());
         }
     }
 
-    public static interface SizeListener{
+    public interface SizeListener{
         void onCameraSizeCalculated(Size c);
     }
 
@@ -119,8 +118,10 @@ public class CameraUtils {
     public static void openCamera(Context appContext, CameraManager cameraManager, CameraStateListener cameraStateListener){
         try {
             //explicit permissions check
-            if (ActivityCompat.checkSelfPermission(appContext, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED)
+            if (ActivityCompat.checkSelfPermission(appContext, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                Notifier.log(Log.ERROR, CameraUtils.class, "Permissions missing");
                 return;
+            }
             cameraManager.openCamera("0", new CameraStatusCallback(cameraStateListener), null);
         }catch(CameraAccessException e){
             Notifier.log(Log.ERROR, CameraUtils.class, e.getMessage());
@@ -133,25 +134,25 @@ public class CameraUtils {
 
         public CameraStatusCallback(CameraStateListener listener){
             this.listener = listener;
-        };
+        }
 
         @Override
-        public void onOpened(CameraDevice camera) {
+        public void onOpened(@NonNull CameraDevice camera) {
             listener.onCameraConnected(camera);
         }
 
         @Override
-        public void onDisconnected(CameraDevice camera) {
+        public void onDisconnected(@NonNull CameraDevice camera) {
             listener.onCameraDisconnected(camera);
         }
 
         @Override
-        public void onError(CameraDevice camera, int error) {
-
+        public void onError(@NonNull CameraDevice camera, int error) {
+            Notifier.log(Log.ERROR, CameraUtils.class, "ERROR! " + error);
         }
     }
 
-    public static interface CameraStateListener{
+    public interface CameraStateListener{
         void onCameraConnected(CameraDevice cameraDevice);
         void onCameraDisconnected(CameraDevice cameraDevice);
     }
@@ -179,7 +180,7 @@ public class CameraUtils {
                 cameraPreviewRequestBuilder.addTarget(surf);
             }
 
-            cameraDevice.createCaptureSession(surfaceList, new PreviewCaptureStateCallback(callbacks, cameraPreviewRequestBuilder), null);
+            cameraDevice.createCaptureSession(surfaceList, new PreviewCaptureStateCallback(callbacks, cameraPreviewRequestBuilder, imgReader), null);
         }catch(CameraAccessException e){
             Notifier.log(Log.ERROR, CameraUtils.class, e.getMessage());
         }
@@ -197,25 +198,27 @@ public class CameraUtils {
         } catch (CameraAccessException e) { e.printStackTrace(); }
     }
 
-    public static interface CaptureCallbacks{
+    public interface CaptureCallbacks{
         CaptureRequest.Builder editCaptureRequest(CaptureRequest.Builder builder);
-        void onCaptureSessionConfigured(CameraCaptureSession session, CaptureRequest.Builder captureRequestBuilder);
-        void onImageCaptured(Mat rgbMat);
+        void onCaptureSessionConfigured(CameraCaptureSession session, CaptureRequest.Builder captureRequestBuilder, ImageReader imgReader);
+        void onImageCaptured(byte[] data);
     }
 
     private static class PreviewCaptureStateCallback extends CameraCaptureSession.StateCallback{
 
         CaptureCallbacks callbacks;
         CaptureRequest.Builder captureRequestBuilder;
+        ImageReader imgReader;
 
-        public PreviewCaptureStateCallback(CaptureCallbacks callbacks, CaptureRequest.Builder capRequestBuilder){
+        public PreviewCaptureStateCallback(CaptureCallbacks callbacks, CaptureRequest.Builder capRequestBuilder, ImageReader imageReader){
             this.callbacks = callbacks;
             captureRequestBuilder = capRequestBuilder;
+            this.imgReader = imageReader;
         }
 
         @Override
         public void onConfigured(@Nullable CameraCaptureSession session) {
-            callbacks.onCaptureSessionConfigured(session, captureRequestBuilder);
+            callbacks.onCaptureSessionConfigured(session, captureRequestBuilder, imgReader);
         }
 
         @Override
@@ -230,52 +233,49 @@ public class CameraUtils {
      * Requires: Capture size calculated.
      </pre> */
     private static ImageReader createImageReader(Size imageSize, CaptureCallbacks callbacks){
-        ImageReader imageReader = ImageReader.newInstance(imageSize.getWidth(), imageSize.getHeight(), ImageFormat.YUV_420_888, 2);
+        ImageReader imageReader = ImageReader.newInstance(imageSize.getWidth(), imageSize.getHeight(), ImageFormat.YUV_420_888, 1);
         imageReader.setOnImageAvailableListener(new ImageReaderListener(imageSize, callbacks), null);
         return imageReader;
     }
 
     private static class ImageReaderListener implements ImageReader.OnImageAvailableListener{
 
-        Mat yuvReaderMat;
-        Mat rgbMat;
         CaptureCallbacks callbacks;
 
         public ImageReaderListener(Size imageSize, CaptureCallbacks onImageCaptured){
-            yuvReaderMat = new Mat(imageSize.getHeight() + imageSize.getHeight()/2, imageSize.getWidth(), CvType.CV_8UC1);
-            rgbMat = new Mat(imageSize.getHeight(), imageSize.getWidth(), CvType.CV_8UC4);
             callbacks = onImageCaptured;
         }
+
+        byte[] data;
 
         @Override
         public void onImageAvailable(ImageReader reader) {
             Image img = reader.acquireLatestImage();
             if(img == null)return;
 
-            callbacks.onImageCaptured(getImageData(img));
+                Image.Plane Y = img.getPlanes()[0];
+                Image.Plane U = img.getPlanes()[1];
+                Image.Plane V = img.getPlanes()[2];
+
+                int Yb = Y.getBuffer().remaining();
+                int Ub = U.getBuffer().remaining();
+                int Vb = V.getBuffer().remaining();
+
+                if(data == null || data.length != Yb + Ub + Vb) {
+                    data = new byte[Yb + Ub + Vb];
+                    Notifier.log(this, "creating data buffer");
+                }
+
+                Y.getBuffer().get(data, 0, Yb);
+                U.getBuffer().get(data, Yb, Ub);
+                V.getBuffer().get(data, Yb + Ub, Vb);
+
+            callbacks.onImageCaptured(data);
 
             img.close();
-        }
-
-        public Mat getImageData(Image image){
-            Image.Plane Y = image.getPlanes()[0];
-            Image.Plane U = image.getPlanes()[1];
-            Image.Plane V = image.getPlanes()[2];
-
-            int Yb = Y.getBuffer().remaining();
-            int Ub = U.getBuffer().remaining();
-            int Vb = V.getBuffer().remaining();
-
-            byte[] data = new byte[Yb + Ub + Vb];
-            Y.getBuffer().get(data, 0, Yb);
-            U.getBuffer().get(data, Yb, Ub);
-            V.getBuffer().get(data, Yb + Ub, Vb);
-
-            yuvReaderMat.put(0, 0, data);
-            Imgproc.cvtColor(yuvReaderMat, rgbMat, Imgproc.COLOR_YUV2RGBA_NV12);
-            return rgbMat;
 
         }
+
     }
 
     //endregion

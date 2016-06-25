@@ -31,8 +31,6 @@ public class MainActivity extends AppCompatActivity  {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        setUIFlags();
-
         cameraView = (MVRTCameraView)findViewById(R.id.mvrt_cameraview);
         processingOutputView = (ProcessingOutputView)findViewById(R.id.mvrt_processingoutput);
 
@@ -43,8 +41,9 @@ public class MainActivity extends AppCompatActivity  {
     @Override
     public void onResume(){
         super.onResume();
-        initCamera();
         bullseyeCameraManager.init();
+        initCameraPerms();
+        setUIFlags();
     }
 
     @Override
@@ -67,7 +66,7 @@ public class MainActivity extends AppCompatActivity  {
     /**
      * Initializes camera by ensuring permissions are granted, then
      */
-    private void initCamera() {
+    private void initCameraPerms() {
         //check if we have permissions
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             //if we don't, request permissions
@@ -80,8 +79,8 @@ public class MainActivity extends AppCompatActivity  {
     }
 
     /**
-     * Called on permissions request result, called from initCamera() if needed
-     * Calls initCamera() again on success
+     * Called on permissions request result, called from initCameraPerms() if needed
+     * Calls initCameraPerms() again on success
      * */
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
@@ -89,7 +88,7 @@ public class MainActivity extends AppCompatActivity  {
             case REQUEST_PERMISSIONS_CAMERA: {
                 if (grantResults.length > 0  && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     Notifier.log(Log.INFO, this, "Yay! We got permission!");
-                    initCamera();
+                    initCameraPerms();
                 } else {
                     Notifier.snack(this, "We need your permission to use the camera :(", Snackbar.LENGTH_LONG);
                 }

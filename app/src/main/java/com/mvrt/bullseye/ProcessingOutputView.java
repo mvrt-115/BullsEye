@@ -21,12 +21,15 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.util.Size;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
 import org.opencv.android.Utils;
 import org.opencv.core.Mat;
+
+import java.util.Arrays;
 
 /**
  * A {@link SurfaceView} that can be adjusted to a specified aspect ratio.
@@ -37,8 +40,6 @@ public class ProcessingOutputView extends SurfaceView implements SurfaceHolder.C
     private int mRatioHeight = 0;
 
     private SurfaceHolder surfaceHolder;
-
-    Bitmap outputCacheBitmap;
 
     public ProcessingOutputView(Context context) {
         this(context, null);
@@ -52,25 +53,10 @@ public class ProcessingOutputView extends SurfaceView implements SurfaceHolder.C
         super(context, attrs, defStyle);
     }
 
-    public void close(){
-        if(outputCacheBitmap != null) outputCacheBitmap.recycle();
-    }
 
     public void init(Size cameraSize){
         surfaceHolder = getHolder();
         surfaceHolder.addCallback(this);
-        initOutputBitmap(cameraSize.getWidth(), cameraSize.getHeight());
-    }
-
-    private void initOutputBitmap(int width, int height){
-        outputCacheBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
-    }
-
-    public void setMat(Mat m){
-        if(m == null)return;
-        if(outputCacheBitmap == null || outputCacheBitmap.isRecycled())return;
-        Utils.matToBitmap(m, outputCacheBitmap);
-        if(outputCacheBitmap != null)setBitmap(outputCacheBitmap);
     }
 
     public void setBitmap(Bitmap bitmap){

@@ -1,18 +1,46 @@
 package com.mvrt.bullseye;
 
+import android.graphics.Bitmap;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
+import android.util.Log;
+import android.util.Size;
 
-import com.mvrt.bullseye.util.Notifier;
-
+import org.opencv.android.Utils;
+import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
 
-public class CVProcessor implements Handler.Callback {
+import java.util.concurrent.ConcurrentLinkedQueue;
 
-    private Handler cvHandler;
+public class CVProcessor {
+
     private ProcessedMatListener processedMatListener;
+    private ProcessMat processMat;
+    private Thread processThread;
+
+    public static final int HANDLER_NEWMAT = 9876;
+
+    private Handler cvHandler = new Handler(Looper.getMainLooper()){
+
+        @Override
+        public void handleMessage(Message inputMessage){
+            if(inputMessage.what == HANDLER_NEWMAT){
+                if(processedMatListener != null){
+                    processedMatListener.onImgProcessed((Bitmap)inputMessage.obj);
+                }
+            }
+        }
+
+    };
+
+    ConcurrentLinkedQueue<byte[]> inputQueue;
+
+    final Scalar lowHSV = new Scalar(0, 0, 0);
+    final Scalar highHSV = new Scalar(180, 255, 255);
 
     private static CVProcessor cvProcessor;
 
@@ -21,7 +49,7 @@ public class CVProcessor implements Handler.Callback {
     }
 
     private CVProcessor(){
-        cvHandler = new Handler(this);
+        inputQueue = new ConcurrentLinkedQueue<>();
     }
 
     public static CVProcessor getCvProcessor(){
@@ -32,86 +60,77 @@ public class CVProcessor implements Handler.Callback {
         processedMatListener = matListener;
     }
 
-    public void processMat(Mat inputMat){
-        ProcessTask processTask = new ProcessTask(inputMat);
-        cvHandler.post(processTask.getCVProcessRunnable());
+    public void init(Size size, ProcessedMatListener processedMatListener){
+        this.processedMatListener = processedMatListener;
+        processMat = new ProcessMat(size);
+        processThread = new Thread(processMat);
+        processThread.start();
+    }
+
+    public void processMat(byte[] input){
+        inputQueue.add(input);
     }
 
     public void close(){
-        cvHandler.removeCallbacksAndMessages(null);
     }
 
-    public void handleState(ProcessTask processTask, int state){
-        switch(state){
-            case ProcessTask.STATUS_FINISHED:
-                Message m = cvHandler.obtainMessage(state, processTask);
-                m.sendToTarget();
-                break;
-        }
+    public interface ProcessedMatListener{
+        void onImgProcessed(Bitmap out);
     }
 
-    @Override
-    public boolean handleMessage(Message msg) {
-        switch(msg.what){
-            case ProcessTask.STATUS_FINISHED:
-                ProcessTask pTask = (ProcessTask)msg.obj;
-                if(processedMatListener != null)processedMatListener.onMatProcessed(pTask.resultMat);
-                return true;
-            default:
-                return false;
-        }
-    }
+    private class ProcessMat implements Runnable {
 
-    private class ProcessTask{
+        byte[] inputData;
+        Thread thread;
 
-        static final int STATUS_INIT = 0;
-        static final int STATUS_FINISHED = 2;
-
-        int status = STATUS_INIT;
-
-        Mat inputMat;
+        Mat yuvMat;
+        Mat rgbMat;
+        Mat hsvMat;
+        Mat filterMat;
         Mat resultMat;
-        ProcessMat processRunnable;
+        Bitmap outputCacheBitmap;
 
-        public ProcessTask(Mat input){
-            inputMat = input;
-            processRunnable = new ProcessMat(inputMat, this);
-        }
-
-        public ProcessMat getCVProcessRunnable(){
-            return processRunnable;
-        }
-
-        public void updateStatus(int status){
-            this.status = status;
-            resultMat = processRunnable.resultMat;
-            CVProcessor.getCvProcessor().handleState(this, status);
-        }
-
-    }
-
-    private class ProcessMat implements Runnable{
-
-        Mat inputMat;
-        Mat resultMat;
-        ProcessTask pTask;
-
-        public ProcessMat(Mat input, ProcessTask task){
-            inputMat = input;
-            pTask = task;
+        public ProcessMat(Size size){
+            outputCacheBitmap = Bitmap.createBitmap(size.getWidth(), size.getHeight(), Bitmap.Config.RGB_565);
+            yuvMat = new Mat(size.getHeight() + size.getHeight()/2, size.getWidth(), CvType.CV_8UC1);
+            rgbMat = new Mat(size.getHeight(), size.getWidth(), CvType.CV_8UC3);
+            hsvMat = new Mat(size.getHeight(), size.getWidth(), CvType.CV_8UC3);
+            filterMat = new Mat(size.getHeight(), size.getWidth(), CvType.CV_8UC1);
+            resultMat = new Mat(size.getHeight(), size.getWidth(), CvType.CV_8UC3);
         }
 
         @Override
         public void run() {
-            resultMat = new Mat(inputMat.size(), CvType.CV_8UC1);
-            Imgproc.cvtColor(inputMat, resultMat, Imgproc.COLOR_RGB2GRAY);
-            pTask.updateStatus(ProcessTask.STATUS_FINISHED);
+            if(thread == null)thread = Thread.currentThread();
+            while(!thread.isInterrupted()){
+                inputData = inputQueue.poll();
+
+                if(inputData != null){
+                    resultMat.setTo(new Scalar(0, 0, 0));
+                    getImageData(inputData, yuvMat, rgbMat);
+                    Imgproc.cvtColor(rgbMat, hsvMat, Imgproc.COLOR_RGB2HSV);
+                    Core.inRange(hsvMat, lowHSV, highHSV, filterMat);
+
+                    rgbMat.copyTo(resultMat, filterMat);
+
+                    Utils.matToBitmap(resultMat, outputCacheBitmap);
+
+                    Message m = cvHandler.obtainMessage(HANDLER_NEWMAT, outputCacheBitmap);
+                    cvHandler.sendMessage(m);
+                }
+
+                //clear up the queue, if needed
+                while(inputQueue.size() > 1){
+                    inputQueue.remove();
+                }
+            }
         }
 
-    }
+        public void getImageData(byte[] data, Mat yuvReaderMat, Mat rgbMat){
+            yuvReaderMat.put(0, 0, data);
+            Imgproc.cvtColor(yuvReaderMat, rgbMat, Imgproc.COLOR_YUV2RGBA_NV12);
+        }
 
-    public interface ProcessedMatListener{
-        void onMatProcessed(Mat out);
     }
 
 }

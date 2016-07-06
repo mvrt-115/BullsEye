@@ -36,13 +36,14 @@ public class MainActivity extends AppCompatActivity  {
 
         bullseyeCameraManager = new BullseyeCameraManager(getApplicationContext(), cameraView, processingOutputView);
         listener = bullseyeCameraManager;
+
+        initCameraPerms();
     }
 
     @Override
     public void onResume(){
         super.onResume();
         bullseyeCameraManager.init();
-        initCameraPerms();
         setUIFlags();
     }
 

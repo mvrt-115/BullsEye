@@ -3,6 +3,7 @@ package com.mvrt.bullseye;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.hardware.camera2.CameraManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -37,26 +38,34 @@ public class MainActivity extends AppCompatActivity  {
         bullseyeCameraManager = new BullseyeCameraManager(getApplicationContext(), cameraView, processingOutputView);
         listener = bullseyeCameraManager;
 
+        bullseyeCameraManager.init();
+
+        Notifier.log(getClass(), "On Create");
+
         initCameraPerms();
+
     }
 
     @Override
     public void onResume(){
         super.onResume();
-        bullseyeCameraManager.init();
+        Notifier.log(getClass(), "On Resume");
+        bullseyeCameraManager.resume();
         setUIFlags();
     }
 
     @Override
     public void onPause(){
         super.onPause();
-        bullseyeCameraManager.close();
+        Notifier.log(getClass(), "On Pause");
+        bullseyeCameraManager.pause();
     }
 
     @Override
     public void onDestroy(){
         super.onDestroy();
-        bullseyeCameraManager.close();
+        Notifier.log(getClass(), "On Destroy");
+        //bullseyeCameraManager.close();
     }
 
     private void setUIFlags() {
@@ -96,7 +105,6 @@ public class MainActivity extends AppCompatActivity  {
             }
         }
     }
-
 
     public interface CameraPermissionsListener{
         void onCameraPermissionsGranted(CameraManager manager);

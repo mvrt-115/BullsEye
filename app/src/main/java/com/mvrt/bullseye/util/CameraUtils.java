@@ -40,6 +40,7 @@ public class CameraUtils {
      */
     public static void loadCV(Context appContext, final CVLoadListener cvLoadListener){
         OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_1_0, appContext, new CVLoaderCallback(appContext, cvLoadListener));
+        Notifier.log(CameraUtils.class, "CV Loaded");
     }
 
     public interface CVLoadListener{
@@ -78,7 +79,7 @@ public class CameraUtils {
         try {
             //explicit call to check permissions:
             if (ActivityCompat.checkSelfPermission(appContext, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                Notifier.log(Log.ERROR, CameraUtils.class, "MVRTCameraManager.initCameraSizes() -> Camera Permission Not Granted");
+                Notifier.log(Log.ERROR, CameraUtils.class, "initCameraSizes() -> Camera Permission Not Granted");
                 return;
             }
 

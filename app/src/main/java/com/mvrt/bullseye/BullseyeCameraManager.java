@@ -20,7 +20,8 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
 
     CameraManager cameraManager;
     CameraDevice cameraDevice;
-    Size cameraCaptureSize;
+    Size cameraPreviewSize;
+    Size imageReaderSize;
     Surface previewSurface;
     ImageReader imageReader;
     CameraCaptureSession cameraCaptureSession;
@@ -96,6 +97,12 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
     }
 
     @Override
+    public void onCameraSizeCalculated(Size previewSize, Size imgReaderSIze) {
+        cameraPreviewSize = previewSize;
+        imageReaderSize = imgReaderSIze;
+        readyToOpenCamera = true;
+        openCamera();
+    }
 
 
     public void openCamera(){

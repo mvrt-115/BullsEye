@@ -31,7 +31,8 @@ import java.util.Arrays;
 public class CameraUtils {
 
     /** Configuration Variables */
-    final static Size maxCameraSize = new Size(1280, 720);
+    final static Size MAX_PREVIEW_SIZE = new Size(1280, 720);
+    final static Size MAX_IMGREADER_SIZE = new Size(640,480);
     /** End config vars */
 
     //region Load OpenCV
@@ -90,12 +91,14 @@ public class CameraUtils {
             assert (streamConfigMap != null);
 
             Size[] sizes = streamConfigMap.getOutputSizes(ImageFormat.JPEG);
-            Size cameraOutputSize = ImageSizeUtils.chooseOptimalSize(streamConfigMap, maxCameraSize);
+            Size cameraPreviewSize = ImageSizeUtils.chooseOptimalSize(streamConfigMap, MAX_PREVIEW_SIZE);
+            Size imageReaderSize = ImageSizeUtils.chooseOptimalSize(streamConfigMap, MAX_IMGREADER_SIZE);
 
             Notifier.log(CameraUtils.class, "Sizes: " + Arrays.toString(sizes));
-            Notifier.log(CameraUtils.class, "Size Calculated: " + cameraOutputSize.toString());
+            Notifier.log(CameraUtils.class, "Preview Size: " + cameraPreviewSize.toString());
+            Notifier.log(CameraUtils.class, "Image Reader Size: " + imageReaderSize.toString());
 
-            listener.onCameraSizeCalculated(cameraOutputSize);
+            listener.onCameraSizeCalculated(cameraPreviewSize, imageReaderSize);
 
 
         }catch(CameraAccessException e){
@@ -104,7 +107,7 @@ public class CameraUtils {
     }
 
     public interface SizeListener{
-        void onCameraSizeCalculated(Size c);
+        void onCameraSizeCalculated(Size preview, Size imgReader);
     }
 
     //endregion

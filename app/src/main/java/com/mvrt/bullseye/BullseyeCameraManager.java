@@ -51,14 +51,28 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
             cameraDevice = null;
             Notifier.log(getClass(), "Camera Device Closed");
         }
+
+        if(cameraCaptureSession != null){
+            cameraCaptureSession.close();
+            cameraCaptureSession = null;
+        }
+
+        cameraView.releaseSurface();
+
+        if(processor != null){
+            processor.close();
+        }
+
     }
 
     public void resume(){
-        if(readyToOpenCamera)openCamera();
+        if(readyToOpenCamera){
+           openCamera();
+        }
     }
 
     public void close(){
-        /*if(cameraCaptureSession != null){
+        if(cameraCaptureSession != null){
             cameraCaptureSession.close();
             cameraCaptureSession = null;
         }
@@ -68,11 +82,16 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
             cameraDevice = null;
         }
 
+        cameraView.releaseSurface();
+
+        if(processor != null) {
+            processor.close();
+        }
+
         if(imageReader != null){
             imageReader.close();
             imageReader = null;
         }
-        processor.close(); */
     }
 
 
@@ -104,7 +123,6 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
         openCamera();
     }
 
-
     public void openCamera(){
         CameraUtils.openCamera(appContext, cameraManager, this);
     }
@@ -114,6 +132,7 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
     public void onCameraConnected(CameraDevice cameraDevice) {
         this.cameraDevice = cameraDevice;
         Notifier.log(getClass(), "Camera Device Connected, id:" + cameraDevice.getId());
+        initViews();
     }
 
     @Override
@@ -133,19 +152,18 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
     @Override
     public void onSurfaceReady(Surface surface) {
         previewSurface = surface;
+        initProcessor();
+        initCapture();
     }
     //endregion
 
     public void initProcessor(){
-        processor.init(cameraPreviewSize, this);
+        processor.init(imageReaderSize, this);
     }
 
     public void initCapture(){
-        CameraUtils.initCapture(cameraPreviewSize, cameraDevice, this, previewSurface);
-    }
-
-    public void startCapture(){
-        CameraUtils.startCapture(cameraCaptureSession, cameraCaptureRequestBuilder);
+        Notifier.log(getClass(), "Initializing Capture, previewSurface = " + previewSurface.toString() + ", " + previewSurface.isValid());
+        CameraUtils.initCapture(imageReaderSize, cameraDevice, this, previewSurface);
     }
 
     long exposureTime = 14000000; /** 7/500 seconds -> tested OPTIMAL (6/12/16) by @akhil99 */
@@ -174,6 +192,12 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
         cameraCaptureSession = session;
         cameraCaptureRequestBuilder = captureRequestBuilder;
         imageReader = imgReader;
+        Notifier.log(getClass(), "Capture Session Configured");
+        startCapture();
+    }
+
+    public void startCapture(){
+        CameraUtils.startCapture(cameraCaptureSession, cameraCaptureRequestBuilder);
     }
 
     @Override

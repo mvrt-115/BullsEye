@@ -3,7 +3,6 @@ package com.mvrt.bullseye;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
-import android.content.res.Configuration;
 import android.hardware.camera2.CameraManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -20,9 +19,6 @@ public class MainActivity extends AppCompatActivity  {
 
     private static final int REQUEST_PERMISSIONS_CAMERA = 1;
 
-    MVRTCameraView cameraView;
-    ProcessingOutputView processingOutputView;
-
     BullseyeCameraManager bullseyeCameraManager;
 
     CameraPermissionsListener listener;
@@ -32,8 +28,8 @@ public class MainActivity extends AppCompatActivity  {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        cameraView = (MVRTCameraView)findViewById(R.id.mvrt_cameraview);
-        processingOutputView = (ProcessingOutputView)findViewById(R.id.mvrt_processingoutput);
+        MVRTCameraView cameraView = (MVRTCameraView)findViewById(R.id.mvrt_cameraview);
+        ProcessingOutputView processingOutputView = (ProcessingOutputView)findViewById(R.id.mvrt_processingoutput);
 
         bullseyeCameraManager = new BullseyeCameraManager(getApplicationContext(), cameraView, processingOutputView);
         listener = bullseyeCameraManager;
@@ -65,7 +61,7 @@ public class MainActivity extends AppCompatActivity  {
     public void onDestroy(){
         super.onDestroy();
         Notifier.log(getClass(), "On Destroy");
-        //bullseyeCameraManager.close();
+        bullseyeCameraManager.close();
     }
 
     private void setUIFlags() {

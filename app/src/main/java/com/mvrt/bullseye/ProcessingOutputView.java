@@ -55,8 +55,9 @@ public class ProcessingOutputView extends SurfaceView implements SurfaceHolder.C
 
 
     public void init(Size cameraSize){
-        surfaceHolder = getHolder();
+        if(surfaceHolder == null)surfaceHolder = getHolder();
         surfaceHolder.addCallback(this);
+        setAspectRatio(cameraSize.getWidth(), cameraSize.getHeight());
     }
 
     public void setBitmap(Bitmap bitmap){

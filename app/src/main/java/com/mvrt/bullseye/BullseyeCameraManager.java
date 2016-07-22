@@ -123,9 +123,9 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
     }
     //endregion
 
+
     public void initViews(){
         cameraView.init(this, cameraPreviewSize);
-        outputView.setAspectRatio(cameraPreviewSize.getWidth(), cameraPreviewSize.getHeight());
         outputView.init(cameraPreviewSize);
     }
 

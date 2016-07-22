@@ -14,6 +14,8 @@ import com.mvrt.bullseye.util.Notifier;
 
 public class MVRTCameraView extends AutoFitTextureView implements TextureView.SurfaceTextureListener{
 
+    Surface surface;
+
     public MVRTCameraView(Context context) {
         super(context);
     }
@@ -33,13 +35,10 @@ public class MVRTCameraView extends AutoFitTextureView implements TextureView.Su
         this.surfaceReadyListener = listener;
         this.cameraSize = cameraCaptureSize;
         if(isAvailable()){
-            Notifier.log(this, "IsAvailable, Camera Capture Size: " + cameraCaptureSize.toString());
-            setAspectRatio(cameraSize.getWidth(), cameraSize.getHeight());
-            getSurfaceTexture().setDefaultBufferSize(cameraCaptureSize.getWidth(), cameraCaptureSize.getHeight());
-            configureTransform();
-            listener.onSurfaceReady(createSurface());
+            Notifier.log(getClass(), "Is Available!");
+            onSurfaceTextureAvailable(getSurfaceTexture(), cameraSize.getWidth(), cameraSize.getHeight());
         }
-        else setSurfaceTextureListener(this);
+        setSurfaceTextureListener(this);
     }
 
     /**
@@ -70,17 +69,23 @@ public class MVRTCameraView extends AutoFitTextureView implements TextureView.Su
         setTransform(matrix);
     }
 
-    private Surface createSurface(){
-        return new Surface(getSurfaceTexture());
+    public void releaseSurface(){
+        if(surface != null)surface.release();
+        surface = null;
     }
 
     /** TextureView.SurfaceTextureListener */
     @Override
-    public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+    public void onSurfaceTextureAvailable(SurfaceTexture surfaceTexture, int width, int height) {
+        Notifier.log(getClass(), "Surface Texture Available");
         setAspectRatio(cameraSize.getWidth(), cameraSize.getHeight());
         getSurfaceTexture().setDefaultBufferSize(cameraSize.getWidth(), cameraSize.getHeight());
         configureTransform();
-        if(surfaceReadyListener != null) surfaceReadyListener.onSurfaceReady(createSurface());
+        if(surfaceReadyListener != null){
+            if (surface == null)surface = new Surface(surfaceTexture);
+            if(surfaceReadyListener != null)surfaceReadyListener.onSurfaceReady(surface);
+            surfaceReadyListener = null;
+        }
     }
 
     @Override

@@ -184,6 +184,7 @@ public class CameraUtils {
                 cameraPreviewRequestBuilder.addTarget(surf);
             }
 
+            //todo: check if passing the imgReader through callbacks causes any memory issues/leaks
             cameraDevice.createCaptureSession(surfaceList, new PreviewCaptureStateCallback(callbacks, cameraPreviewRequestBuilder, imgReader), null);
         }catch(CameraAccessException e){
             Notifier.log(Log.ERROR, CameraUtils.class, e.getMessage());
@@ -198,7 +199,7 @@ public class CameraUtils {
     public static void startCapture(CameraCaptureSession session, CaptureRequest.Builder previewRequestBuilder){
         CaptureRequest cameraPreviewRequest = previewRequestBuilder.build();
         try {
-            session.setRepeatingRequest(cameraPreviewRequest, null, null);
+            session.setRepeatingRequest(cameraPreviewRequest, captureCallback, null);
         } catch (CameraAccessException e) { e.printStackTrace(); }
     }
 
@@ -207,6 +208,20 @@ public class CameraUtils {
         void onCaptureSessionConfigured(CameraCaptureSession session, CaptureRequest.Builder captureRequestBuilder, ImageReader imgReader);
         void onImageCaptured(byte[] data);
     }
+
+    private static CameraCaptureSession.CaptureCallback captureCallback = new CameraCaptureSession.CaptureCallback() {
+        @Override
+        public void onCaptureSequenceCompleted(CameraCaptureSession session, int sequenceId, long frameNumber) {
+            super.onCaptureSequenceCompleted(session, sequenceId, frameNumber);
+            Notifier.log(getClass(), "Capture Sequence Completed");
+        }
+
+        @Override
+        public void onCaptureSequenceAborted(CameraCaptureSession session, int sequenceId) {
+            super.onCaptureSequenceAborted(session, sequenceId);
+            Notifier.log(getClass(), "Capture Sequence Aborted");
+        }
+    };
 
     private static class PreviewCaptureStateCallback extends CameraCaptureSession.StateCallback{
 
@@ -222,6 +237,7 @@ public class CameraUtils {
 
         @Override
         public void onConfigured(@Nullable CameraCaptureSession session) {
+            Notifier.log(getClass(), "Capture Session Configured");
             callbacks.onCaptureSessionConfigured(session, captureRequestBuilder, imgReader);
         }
 

@@ -237,8 +237,8 @@ public class CameraUtils {
      * Requires: Capture size calculated.
      </pre> */
     private static ImageReader createImageReader(Size imageSize, CaptureCallbacks callbacks){
-        ImageReader imageReader = ImageReader.newInstance(imageSize.getWidth(), imageSize.getHeight(), ImageFormat.YUV_420_888, 1);
-        imageReader.setOnImageAvailableListener(new ImageReaderListener(imageSize, callbacks), null);
+        ImageReader imageReader = ImageReader.newInstance(imageSize.getWidth(), imageSize.getHeight(), ImageFormat.YUV_420_888, 2);
+        imageReader.setOnImageAvailableListener(new ImageReaderListener(callbacks), null);
         return imageReader;
     }
 
@@ -246,7 +246,7 @@ public class CameraUtils {
 
         CaptureCallbacks callbacks;
 
-        public ImageReaderListener(Size imageSize, CaptureCallbacks onImageCaptured){
+        public ImageReaderListener(CaptureCallbacks onImageCaptured){
             callbacks = onImageCaptured;
         }
 
@@ -274,9 +274,9 @@ public class CameraUtils {
                 U.getBuffer().get(data, Yb, Ub);
                 V.getBuffer().get(data, Yb + Ub, Vb);
 
-            callbacks.onImageCaptured(data);
+                img.close();
 
-            img.close();
+            callbacks.onImageCaptured(data);
 
         }
 

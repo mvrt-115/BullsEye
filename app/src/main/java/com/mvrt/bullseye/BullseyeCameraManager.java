@@ -2,10 +2,14 @@ package com.mvrt.bullseye;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.ImageFormat;
+import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
+import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
+import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.ImageReader;
 import android.util.Log;
 import android.util.Size;
@@ -166,17 +170,24 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
         CameraUtils.initCapture(imageReaderSize, cameraDevice, this, previewSurface);
     }
 
-    long exposureTime = 14000000; /** 7/500 seconds -> tested OPTIMAL (6/12/16) by @akhil99 */
-    long frameDuration = 1000;
+    long exposureTime = 5 * 1000 * 1000;
     int iso = 100;
 
     public CaptureRequest.Builder configureCaptureRequest(CaptureRequest.Builder requestBuilder){
-        requestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
-        requestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF);
-        requestBuilder.set(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_OFF);
+        requestBuilder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_OFF);
+        requestBuilder.set(CaptureRequest.LENS_FOCUS_DISTANCE, 0.0f);
         requestBuilder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, exposureTime);
-        requestBuilder.set(CaptureRequest.SENSOR_FRAME_DURATION, frameDuration);
         requestBuilder.set(CaptureRequest.SENSOR_SENSITIVITY, iso);
+        //requestBuilder.set(CaptureRequest.BLACK_LEVEL_LOCK, true);
+
+        try {
+            CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics("0");
+            StreamConfigurationMap configs = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+            long frameDuration = configs.getOutputMinFrameDuration(ImageFormat.YUV_420_888, cameraPreviewSize);
+            requestBuilder.set(CaptureRequest.SENSOR_FRAME_DURATION, frameDuration);
+            Notifier.log(getClass(), "Frame Duration (ns): " + frameDuration);
+        } catch (CameraAccessException e) { e.printStackTrace(); }
+
         return requestBuilder;
     }
 

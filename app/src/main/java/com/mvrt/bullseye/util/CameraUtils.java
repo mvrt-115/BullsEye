@@ -32,7 +32,7 @@ public class CameraUtils {
 
     /** Configuration Variables */
     final static Size MAX_PREVIEW_SIZE = new Size(1280, 720);
-    final static Size MAX_IMGREADER_SIZE = new Size(640,480);
+    final static Size MAX_IMGREADER_SIZE = new Size(1280, 720);
     /** End config vars */
 
     //region Load OpenCV

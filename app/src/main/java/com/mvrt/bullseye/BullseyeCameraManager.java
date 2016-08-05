@@ -13,6 +13,7 @@ import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.ImageReader;
 import android.util.Log;
 import android.util.Size;
+import android.util.SizeF;
 import android.view.Surface;
 
 import com.mvrt.bullseye.util.CameraUtils;
@@ -26,6 +27,7 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
     CameraDevice cameraDevice;
     Size cameraPreviewSize;
     Size imageReaderSize;
+    SizeF cameraFOV;
     Surface previewSurface;
     ImageReader imageReader;
     CameraCaptureSession cameraCaptureSession;
@@ -120,9 +122,10 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
     }
 
     @Override
-    public void onCameraSizeCalculated(Size previewSize, Size imgReaderSIze) {
+    public void onCameraSizeCalculated(Size previewSize, Size imgReaderSize, SizeF fovSize) {
         cameraPreviewSize = previewSize;
-        imageReaderSize = imgReaderSIze;
+        imageReaderSize = imgReaderSize;
+        cameraFOV = fovSize;
         readyToOpenCamera = true;
         openCamera();
     }
@@ -162,7 +165,7 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
     //endregion
 
     public void initProcessor(){
-        processor.init(imageReaderSize, this);
+        processor.init(imageReaderSize, cameraFOV, this);
     }
 
     public void initCapture(){

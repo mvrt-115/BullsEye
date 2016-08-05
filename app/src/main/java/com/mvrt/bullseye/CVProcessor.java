@@ -6,6 +6,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
 import android.util.Size;
+import android.util.SizeF;
 
 import com.mvrt.bullseye.util.Notifier;
 
@@ -29,6 +30,9 @@ public class CVProcessor {
     private ProcessedMatListener processedMatListener;
     private ProcessMat processMat;
     private Thread processThread;
+
+    private double focalLengthPixels;
+    private double halfImageHeight;
 
     public static final int HANDLER_NEWMAT = 9876;
 
@@ -74,7 +78,12 @@ public class CVProcessor {
         processedMatListener = matListener;
     }
 
-    public void init(Size size, ProcessedMatListener processedMatListener){
+    public void init(Size size, SizeF fov, ProcessedMatListener processedMatListener){
+        halfImageHeight = size.getHeight()/2 + 0.5;
+
+        focalLengthPixels = .5 * size.getWidth()/Math.tan(fov.getWidth()/2);
+        Notifier.log(getClass(), "FLP From Width: " + focalLengthPixels);
+
         this.processedMatListener = processedMatListener;
         if(processMat == null)processMat = new ProcessMat(size);
         processThread = new Thread(processMat);
@@ -159,6 +168,10 @@ public class CVProcessor {
                             Notifier.log(getClass(), "Ignoring blob with aspect ratio " + ratio);
                             continue;
                         }
+
+                        double angle = Math.atan((rec.center.y - halfImageHeight)/focalLengthPixels);
+                        double degrees = Math.toDegrees(angle);
+                        Log.d("MVRT", "Angle " + degrees);
 
                         rec.points(rect_points);
                         for( int j = 0; j < 4; j++ ) {

@@ -4,6 +4,7 @@ package com.mvrt.bullseye.util;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Camera;
 import android.graphics.ImageFormat;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -19,6 +20,7 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 import android.util.Size;
+import android.util.SizeF;
 import android.view.Surface;
 
 import org.opencv.android.BaseLoaderCallback;
@@ -31,8 +33,8 @@ import java.util.Arrays;
 public class CameraUtils {
 
     /** Configuration Variables */
-    final static Size MAX_PREVIEW_SIZE = new Size(1280, 720);
-    final static Size MAX_IMGREADER_SIZE = new Size(1280, 720);
+    final static Size MAX_PREVIEW_SIZE = new Size(1280, 960);
+    final static Size MAX_IMGREADER_SIZE = new Size(1280, 960);
     /** End config vars */
 
     //region Load OpenCV
@@ -88,6 +90,18 @@ public class CameraUtils {
             CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics("0");
             StreamConfigurationMap streamConfigMap = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
 
+            SizeF sensorSize = characteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
+            Notifier.log(CameraUtils.class, "sensor array dimensions: " + sensorSize.toString());
+            float focalLength = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)[0];
+            Notifier.log(CameraUtils.class, "camera focal length: " + focalLength);
+
+            float horizFOV = 2 * (float)Math.atan2(.5 * sensorSize.getWidth(), focalLength);
+            float vertFOV = 2 * (float)Math.atan2(.5 * sensorSize.getHeight(), focalLength);
+            SizeF fovSize = new SizeF(horizFOV, vertFOV);
+
+            Notifier.log(CameraUtils.class, "Horizontal FOV: " + horizFOV);
+            Notifier.log(CameraUtils.class, "Vertical FOV: " + vertFOV);
+
             assert (streamConfigMap != null);
 
             Size[] sizes = streamConfigMap.getOutputSizes(ImageFormat.JPEG);
@@ -98,7 +112,7 @@ public class CameraUtils {
             Notifier.log(CameraUtils.class, "Preview Size: " + cameraPreviewSize.toString());
             Notifier.log(CameraUtils.class, "Image Reader Size: " + imageReaderSize.toString());
 
-            listener.onCameraSizeCalculated(cameraPreviewSize, imageReaderSize);
+            listener.onCameraSizeCalculated(cameraPreviewSize, imageReaderSize, fovSize);
 
 
         }catch(CameraAccessException e){
@@ -107,7 +121,7 @@ public class CameraUtils {
     }
 
     public interface SizeListener{
-        void onCameraSizeCalculated(Size preview, Size imgReader);
+        void onCameraSizeCalculated(Size preview, Size imgReader, SizeF fieldOfView);
     }
 
     //endregion

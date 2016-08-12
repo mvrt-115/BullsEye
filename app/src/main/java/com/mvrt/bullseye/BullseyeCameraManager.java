@@ -165,7 +165,7 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
     //endregion
 
     public void initProcessor(){
-        processor.init(imageReaderSize, cameraFOV, this);
+        processor.init(appContext, imageReaderSize, cameraFOV, this);
     }
 
     public void initCapture(){

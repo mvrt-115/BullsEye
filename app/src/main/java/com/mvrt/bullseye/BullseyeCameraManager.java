@@ -38,11 +38,12 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
 
     private boolean readyToOpenCamera = false;
 
-    public BullseyeCameraManager(Context appContext, MVRTCameraView mvrtCameraView, ProcessingOutputView outputView){
+    public BullseyeCameraManager(Context appContext, MVRTCameraView mvrtCameraView, ProcessingOutputView outputView, OutputSocketServer socketServer){
         cameraView = mvrtCameraView;
         this.appContext = appContext;
         this.outputView = outputView;
         processor = CVProcessor.getCvProcessor();
+        processor.setOutputSocketServer(socketServer);
     }
 
     public void init(){

@@ -25,4 +25,5 @@ dependencies {
     compile project(':openCV')
     compile 'com.android.support:appcompat-v7:23.2.1'
     compile 'com.android.support:design:23.2.1'
+    compile 'org.java-websocket:Java-WebSocket:1.3.0'
 }

@@ -20,6 +20,7 @@ public class MainActivity extends AppCompatActivity  {
     private static final int REQUEST_PERMISSIONS_CAMERA = 1;
 
     BullseyeCameraManager bullseyeCameraManager;
+    OutputSocketServer socketServer;
 
     CameraPermissionsListener listener;
 
@@ -31,7 +32,10 @@ public class MainActivity extends AppCompatActivity  {
         MVRTCameraView cameraView = (MVRTCameraView)findViewById(R.id.mvrt_cameraview);
         ProcessingOutputView processingOutputView = (ProcessingOutputView)findViewById(R.id.mvrt_processingoutput);
 
-        bullseyeCameraManager = new BullseyeCameraManager(getApplicationContext(), cameraView, processingOutputView);
+        socketServer = new OutputSocketServer(8887);
+        socketServer.start();
+
+        bullseyeCameraManager = new BullseyeCameraManager(getApplicationContext(), cameraView, processingOutputView, socketServer);
         listener = bullseyeCameraManager;
 
         bullseyeCameraManager.init();
@@ -60,6 +64,7 @@ public class MainActivity extends AppCompatActivity  {
     @Override
     public void onDestroy(){
         super.onDestroy();
+        socketServer.stop();
         Notifier.v(getClass(), "On Destroy");
         bullseyeCameraManager.close();
     }

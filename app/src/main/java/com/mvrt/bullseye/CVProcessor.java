@@ -26,6 +26,7 @@ import org.opencv.core.RotatedRect;
 import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -34,6 +35,7 @@ public class CVProcessor implements SensorEventListener{
     private ProcessedMatListener mProcessedMatListener;
     private ProcessMat mProcessMat;
     private Thread mProcessThread;
+    private OutputSocketServer outputSocketServer;
 
     private SensorManager mSensorManager;
     private Sensor mOrientationSensor;
@@ -123,6 +125,8 @@ public class CVProcessor implements SensorEventListener{
         Notifier.endSection(Log.ASSERT, getClass());
     }
 
+    public void setOutputSocketServer(OutputSocketServer outputSocketServer){
+        this.outputSocketServer = outputSocketServer;
     }
 
     public void setProcessedMatListener(ProcessedMatListener matListener){
@@ -164,6 +168,7 @@ public class CVProcessor implements SensorEventListener{
 
         ArrayList<MatOfPoint> contours;
         MatOfPoint2f matOfPoint2f;
+        ByteBuffer outputBuffer;
         Point[] rect_points;
         Point[] textLines;
         final Scalar TEXT_COLOR = new Scalar(255, 255, 255);
@@ -186,6 +191,7 @@ public class CVProcessor implements SensorEventListener{
             textLines[1] = new Point(100, IMAGE_HEIGHT-100);
             textLines[2] = new Point(100, IMAGE_HEIGHT-50);
 
+            outputBuffer = ByteBuffer.allocate(20);
         }
 
         @Override
@@ -245,7 +251,15 @@ public class CVProcessor implements SensorEventListener{
                     Imgproc.putText(rgbMat, "Dist: " + distance, textLines[1], Core.FONT_HERSHEY_PLAIN, 3.0, TEXT_COLOR);
                     Imgproc.putText(rgbMat, "Turn: " + Math.toDegrees(turnAngle), textLines[2], Core.FONT_HERSHEY_PLAIN, 3.0, TEXT_COLOR);
 
+                    //todo: test to see how long this process takes, and if it should be moved to another thread
+                    outputBuffer.clear();
+                    outputBuffer.putInt((int)distance);
+                    outputBuffer.putDouble(verticalAngle);
+                    outputBuffer.putDouble(turnAngle);
+                    if(outputSocketServer != null){
+                        outputSocketServer.sendToAll(outputBuffer.array());
                     }
+                }
 
                 Utils.matToBitmap(rgbMat, outputCacheBitmap);
 

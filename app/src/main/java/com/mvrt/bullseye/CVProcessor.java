@@ -56,14 +56,15 @@ public class CVProcessor implements SensorEventListener{
 
     ConcurrentLinkedQueue<byte[]> inputQueue;
 
-    //60, 85, 90, 255, 150, 255
+    //region Thresholding Values
     final Scalar lowHSV = new Scalar(60, 90, 150);
     final Scalar highHSV = new Scalar(85, 255, 255);
 
-    final int MIN_AREA = 7500;
+    final int MIN_AREA = 5000;
 
     final double ASPECT_RATIO = 1.8;
-    final double ASPECT_THRESHOLD = 0.3;
+    final double ASPECT_THRESHOLD = 0.5;
+    //endregion
 
     private static CVProcessor cvProcessor;
 
@@ -95,7 +96,7 @@ public class CVProcessor implements SensorEventListener{
     public void init(Context c, Size size, SizeF fov, ProcessedMatListener processedMatListener){
         mSensorManager = (SensorManager)c.getSystemService(Context.SENSOR_SERVICE);
         mOrientationSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION);
-        if(mOrientationSensor != null)mSensorManager.registerListener(this, mOrientationSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        if(mOrientationSensor != null)mSensorManager.registerListener(this, mOrientationSensor, SensorManager.SENSOR_DELAY_UI);
 
         IMAGE_HEIGHT = size.getHeight();
 

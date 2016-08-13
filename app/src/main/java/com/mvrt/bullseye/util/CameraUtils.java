@@ -43,7 +43,7 @@ public class CameraUtils {
      */
     public static void loadCV(Context appContext, final CVLoadListener cvLoadListener){
         OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_1_0, appContext, new CVLoaderCallback(appContext, cvLoadListener));
-        Notifier.log(CameraUtils.class, "CV Loaded");
+        Notifier.v(CameraUtils.class, "CV Loaded");
     }
 
     public interface CVLoadListener{
@@ -90,27 +90,31 @@ public class CameraUtils {
             CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics("0");
             StreamConfigurationMap streamConfigMap = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
 
+            assert (streamConfigMap != null);
+
             SizeF sensorSize = characteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
-            Notifier.log(CameraUtils.class, "sensor array dimensions: " + sensorSize.toString());
             float focalLength = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)[0];
-            Notifier.log(CameraUtils.class, "camera focal length: " + focalLength);
 
             float horizFOV = 2 * (float)Math.atan2(.5 * sensorSize.getWidth(), focalLength);
             float vertFOV = 2 * (float)Math.atan2(.5 * sensorSize.getHeight(), focalLength);
             SizeF fovSize = new SizeF(horizFOV, vertFOV);
 
-            Notifier.log(CameraUtils.class, "Horizontal FOV: " + horizFOV);
-            Notifier.log(CameraUtils.class, "Vertical FOV: " + vertFOV);
-
-            assert (streamConfigMap != null);
+            Notifier.startSection("Camera Info");
+            Notifier.s("Sensor array (mm): " + sensorSize.toString());
+            Notifier.s("Focal length (mm): " + focalLength);
+            Notifier.s("Horizontal FOV: " + horizFOV);
+            Notifier.s("Vertical FOV: " + vertFOV);
+            Notifier.endSection(Log.INFO, CameraUtils.class);
 
             Size[] sizes = streamConfigMap.getOutputSizes(ImageFormat.JPEG);
             Size cameraPreviewSize = ImageSizeUtils.chooseOptimalSize(streamConfigMap, MAX_PREVIEW_SIZE);
             Size imageReaderSize = ImageSizeUtils.chooseOptimalSize(streamConfigMap, MAX_IMGREADER_SIZE);
 
-            Notifier.log(CameraUtils.class, "Sizes: " + Arrays.toString(sizes));
-            Notifier.log(CameraUtils.class, "Preview Size: " + cameraPreviewSize.toString());
-            Notifier.log(CameraUtils.class, "Image Reader Size: " + imageReaderSize.toString());
+            Notifier.startSection("Camera Sizes");
+            Notifier.s("Sizes: " + Arrays.toString(sizes));
+            Notifier.s("Preview Size: " + cameraPreviewSize.toString());
+            Notifier.s("Image Reader Size: " + imageReaderSize.toString());
+            Notifier.endSection(Log.INFO, CameraUtils.class);
 
             listener.onCameraSizeCalculated(cameraPreviewSize, imageReaderSize, fovSize);
 
@@ -227,13 +231,13 @@ public class CameraUtils {
         @Override
         public void onCaptureSequenceCompleted(CameraCaptureSession session, int sequenceId, long frameNumber) {
             super.onCaptureSequenceCompleted(session, sequenceId, frameNumber);
-            Notifier.log(getClass(), "Capture Sequence Completed");
+            Notifier.v(getClass(), "Capture Sequence Completed");
         }
 
         @Override
         public void onCaptureSequenceAborted(CameraCaptureSession session, int sequenceId) {
             super.onCaptureSequenceAborted(session, sequenceId);
-            Notifier.log(getClass(), "Capture Sequence Aborted");
+            Notifier.log(Log.WARN, getClass(), "Capture Sequence Aborted");
         }
     };
 
@@ -251,7 +255,7 @@ public class CameraUtils {
 
         @Override
         public void onConfigured(@Nullable CameraCaptureSession session) {
-            Notifier.log(getClass(), "Capture Session Configured");
+            Notifier.v(getClass(), "Capture Session Configured");
             callbacks.onCaptureSessionConfigured(session, captureRequestBuilder, imgReader);
         }
 
@@ -297,7 +301,7 @@ public class CameraUtils {
 
                 if(data == null || data.length != Yb + Ub + Vb) {
                     data = new byte[Yb + Ub + Vb];
-                    Notifier.log(this, "creating data buffer");
+                    Notifier.v(this, "creating data buffer");
                 }
 
                 Y.getBuffer().get(data, 0, Yb);

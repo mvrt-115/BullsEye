@@ -103,13 +103,25 @@ public class CVProcessor implements SensorEventListener{
         HALF_IMAGE_WIDTH = size.getWidth()/2  + 0.5;
 
         focalLengthPixels = .5 * size.getWidth()/Math.tan(fov.getWidth()/2);
-        Notifier.log(getClass(), "FLP From Width: " + focalLengthPixels);
 
         this.mProcessedMatListener = processedMatListener;
         if(mProcessMat == null) mProcessMat = new ProcessMat(size);
         mProcessThread = new Thread(mProcessMat);
         mProcessThread.start();
-        Notifier.log(getClass(), "CVProcessor Initialized, min/max: " + lowHSV + ", " + highHSV);
+
+        Notifier.startSection("CVProcessor Initialized");
+        Notifier.s("Image Size: " + size.toString());
+        Notifier.s("FLP From Image Width: " + focalLengthPixels);
+        Notifier.s("HSV: " + lowHSV + " -> " + highHSV);
+        Notifier.s("Aspect Ratio: " + ASPECT_RATIO + " +/- " + ASPECT_THRESHOLD);
+        Notifier.s("Min Area: " + MIN_AREA);
+        Notifier.s("Target Height (Bottom): " + HEIGHT_TARGET_BOTTOM);
+        Notifier.s("Target Height (Middle): " + HEIGHT_TARGET_MIDDLE);
+        Notifier.s("Camera Mount Height: " + HEIGHT_CAMERA_MOUNT);
+        Notifier.s("Total Height Difference: " + HEIGHT_DIFFERENCE);
+        Notifier.endSection(Log.ASSERT, getClass());
+    }
+
     }
 
     public void setProcessedMatListener(ProcessedMatListener matListener){

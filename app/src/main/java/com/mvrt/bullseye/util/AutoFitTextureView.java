@@ -18,7 +18,6 @@ package com.mvrt.bullseye.util;
  
 import android.content.Context;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.util.Size;
 import android.view.TextureView;
  
@@ -58,7 +57,7 @@ public class AutoFitTextureView extends TextureView {
         mRatioWidth = width;
         mRatioHeight = height;
 
-        Notifier.log(this, "set aspect ratio: " + mRatioWidth + " / " + mRatioHeight);
+        Notifier.d(this, "set aspect ratio: " + mRatioWidth + " / " + mRatioHeight);
 
         requestLayout();
     }

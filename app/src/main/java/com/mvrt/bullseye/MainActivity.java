@@ -36,7 +36,7 @@ public class MainActivity extends AppCompatActivity  {
 
         bullseyeCameraManager.init();
 
-        Notifier.log(getClass(), "On Create");
+        Notifier.v(getClass(), "On Create");
 
         initCameraPerms();
 
@@ -45,7 +45,7 @@ public class MainActivity extends AppCompatActivity  {
     @Override
     public void onResume(){
         super.onResume();
-        Notifier.log(getClass(), "On Resume");
+        Notifier.v(getClass(), "On Resume");
         bullseyeCameraManager.resume();
         setUIFlags();
     }
@@ -53,14 +53,14 @@ public class MainActivity extends AppCompatActivity  {
     @Override
     public void onPause(){
         super.onPause();
-        Notifier.log(getClass(), "On Pause");
+        Notifier.v(getClass(), "On Pause");
         bullseyeCameraManager.pause();
     }
 
     @Override
     public void onDestroy(){
         super.onDestroy();
-        Notifier.log(getClass(), "On Destroy");
+        Notifier.v(getClass(), "On Destroy");
         bullseyeCameraManager.close();
     }
 
@@ -93,7 +93,7 @@ public class MainActivity extends AppCompatActivity  {
         switch (requestCode) {
             case REQUEST_PERMISSIONS_CAMERA: {
                 if (grantResults.length > 0  && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Notifier.log(Log.INFO, this, "Yay! We got permission!");
+                    Notifier.v(this, "Yay! We got permission!");
                     initCameraPerms();
                 } else {
                     Notifier.snack(this, "We need your permission to use the camera :(", Snackbar.LENGTH_LONG);

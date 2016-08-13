@@ -11,7 +11,6 @@ import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.ImageReader;
-import android.util.Log;
 import android.util.Size;
 import android.util.SizeF;
 import android.view.Surface;
@@ -55,7 +54,7 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
         if(cameraDevice != null){
             cameraDevice.close();
             cameraDevice = null;
-            Notifier.log(getClass(), "Camera Device Closed");
+            Notifier.v(getClass(), "Camera Device Closed");
         }
 
         if(cameraCaptureSession != null){
@@ -104,7 +103,7 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
     @Override
     public void onCameraPermissionsGranted(CameraManager manager) {
         cameraManager = manager;
-        Notifier.log(getClass(), "Camera Permissions Granted");
+        Notifier.v(getClass(), "Camera Permissions Granted");
         loadCV();
     }
 
@@ -138,14 +137,14 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
     @Override
     public void onCameraConnected(CameraDevice cameraDevice) {
         this.cameraDevice = cameraDevice;
-        Notifier.log(getClass(), "Camera Device Connected, id:" + cameraDevice.getId());
+        Notifier.v(getClass(), "Camera Device Connected, id:" + cameraDevice.getId());
         initViews();
     }
 
     @Override
     public void onCameraDisconnected(CameraDevice cameraDevice) {
         close();
-        Notifier.log(getClass(),  "Camera Disconnected, id:" + cameraDevice.getId());
+        Notifier.v(getClass(),  "Camera Disconnected, id:" + cameraDevice.getId());
     }
     //endregion
 
@@ -169,7 +168,7 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
     }
 
     public void initCapture(){
-        Notifier.log(getClass(), "Initializing Capture, previewSurface = " + previewSurface.toString() + ", " + previewSurface.isValid());
+        Notifier.v(getClass(), "Initializing Capture, previewSurface = " + previewSurface.toString() + ", " + previewSurface.isValid());
         CameraUtils.initCapture(imageReaderSize, cameraDevice, this, previewSurface);
     }
 
@@ -181,14 +180,13 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
         requestBuilder.set(CaptureRequest.LENS_FOCUS_DISTANCE, 0.0f);
         requestBuilder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, exposureTime);
         requestBuilder.set(CaptureRequest.SENSOR_SENSITIVITY, iso);
-        //requestBuilder.set(CaptureRequest.BLACK_LEVEL_LOCK, true);
 
         try {
             CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics("0");
             StreamConfigurationMap configs = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
             long frameDuration = configs.getOutputMinFrameDuration(ImageFormat.YUV_420_888, cameraPreviewSize);
             requestBuilder.set(CaptureRequest.SENSOR_FRAME_DURATION, frameDuration);
-            Notifier.log(getClass(), "Frame Duration (ns): " + frameDuration);
+            Notifier.d(getClass(), "Frame Duration (ns): " + frameDuration);
         } catch (CameraAccessException e) { e.printStackTrace(); }
 
         return requestBuilder;
@@ -206,7 +204,7 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
         cameraCaptureSession = session;
         cameraCaptureRequestBuilder = captureRequestBuilder;
         imageReader = imgReader;
-        Notifier.log(getClass(), "Capture Session Configured");
+        Notifier.v(getClass(), "Capture Session Configured");
         startCapture();
     }
 

@@ -35,7 +35,7 @@ public class MVRTCameraView extends AutoFitTextureView implements TextureView.Su
         this.surfaceReadyListener = listener;
         this.cameraSize = cameraCaptureSize;
         if(isAvailable()){
-            Notifier.log(getClass(), "Is Available!");
+            Notifier.v(getClass(), "CameraView Is Available");
             onSurfaceTextureAvailable(getSurfaceTexture(), cameraSize.getWidth(), cameraSize.getHeight());
         }
         setSurfaceTextureListener(this);
@@ -77,7 +77,7 @@ public class MVRTCameraView extends AutoFitTextureView implements TextureView.Su
     /** TextureView.SurfaceTextureListener */
     @Override
     public void onSurfaceTextureAvailable(SurfaceTexture surfaceTexture, int width, int height) {
-        Notifier.log(getClass(), "Surface Texture Available");
+        Notifier.v(getClass(), "Surface Texture Available");
         setAspectRatio(cameraSize.getWidth(), cameraSize.getHeight());
         getSurfaceTexture().setDefaultBufferSize(cameraSize.getWidth(), cameraSize.getHeight());
         configureTransform();

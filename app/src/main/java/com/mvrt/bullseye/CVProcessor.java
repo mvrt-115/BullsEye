@@ -164,6 +164,8 @@ public class CVProcessor implements SensorEventListener{
         ArrayList<MatOfPoint> contours;
         MatOfPoint2f matOfPoint2f;
         Point[] rect_points;
+        Point[] textLines;
+        final Scalar TEXT_COLOR = new Scalar(255, 255, 255);
 
         public ProcessMat(Size size){
             outputCacheBitmap = Bitmap.createBitmap(size.getWidth(), size.getHeight(), Bitmap.Config.RGB_565);
@@ -177,6 +179,12 @@ public class CVProcessor implements SensorEventListener{
             contours = new ArrayList<>();
             matOfPoint2f = new MatOfPoint2f();
             rect_points = new Point[4];
+
+            textLines = new Point[3];
+            textLines[0] = new Point(100, IMAGE_HEIGHT-150);
+            textLines[1] = new Point(100, IMAGE_HEIGHT-100);
+            textLines[2] = new Point(100, IMAGE_HEIGHT-50);
+
         }
 
         @Override
@@ -185,61 +193,63 @@ public class CVProcessor implements SensorEventListener{
             while(!thread.isInterrupted()){
                 inputData = inputQueue.poll();
 
-                if(inputData != null){
-                    contours.clear();
+                if(inputData == null)continue;
 
-                    getImageData(inputData, yuvMat, rgbMat);
-                    Imgproc.cvtColor(rgbMat, hsvMat, Imgproc.COLOR_RGB2HSV);
-                    Core.inRange(hsvMat, lowHSV, highHSV, filterMat);
+                contours.clear();
 
-                    Imgproc.findContours(filterMat, contours, heirarchyMat, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+                getImageData(inputData, yuvMat, rgbMat);
+                Imgproc.cvtColor(rgbMat, hsvMat, Imgproc.COLOR_RGB2HSV);
+                Core.inRange(hsvMat, lowHSV, highHSV, filterMat);
 
-                    for(MatOfPoint mop : contours){
-                        mop.convertTo(matOfPoint2f, CvType.CV_32FC2);
-                        RotatedRect rec = Imgproc.minAreaRect(matOfPoint2f);
+                Imgproc.findContours(filterMat, contours, heirarchyMat, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
 
-                        double area = rec.size.area();
-                        if(area < MIN_AREA){
-                            Notifier.log(getClass(), "Ignoring blob with area " + rec.size.area());
-                            continue;
-                        }
+                for(MatOfPoint mop : contours){
+                    mop.convertTo(matOfPoint2f, CvType.CV_32FC2);
+                    RotatedRect rec = Imgproc.minAreaRect(matOfPoint2f);
 
-                        double width = rec.size.width;
-                        double height = rec.size.height;
-                        if(Math.abs(rec.angle)%90 > 45){
-                            width = height;
-                            height = rec.size.width;
-                        }
-
-                        double ratio = width/height;
-                        if(ratio < ASPECT_RATIO - ASPECT_THRESHOLD || ratio > ASPECT_RATIO + ASPECT_THRESHOLD){
-                            Notifier.log(getClass(), "Ignoring blob with aspect ratio " + ratio);
-                            continue;
-                        }
-
-                        double angle = Math.atan((rec.center.y - HALF_IMAGE_HEIGHT)/focalLengthPixels);
-
-                        double actualAngle = mCameraAngle-angle;
-                        double distance = HEIGHT_DIFFERENCE/Math.tan(actualAngle);
-
-
-                        double turnAngle = Math.atan((rec.center.x - HALF_IMAGE_WIDTH)/focalLengthPixels);
-                        double adjustedTurnAngle = Math.atan(Math.sin(turnAngle)/(Math.cos(turnAngle)*Math.cos(mCameraAngle)));
-
-                        rec.points(rect_points);
-                        for( int j = 0; j < 4; j++ ) {
-                            Imgproc.line(rgbMat, rect_points[j], rect_points[(j+1)%4], RED);
-                            Imgproc.circle(rgbMat, rec.center, 4, RED);
-                            Imgproc.putText(rgbMat, "Dist: " + distance, new Point(100, IMAGE_HEIGHT-100), Core.FONT_HERSHEY_PLAIN, 3.0, new Scalar(255, 255, 255));
-                            Imgproc.putText(rgbMat, "Turn: " + Math.toDegrees(adjustedTurnAngle), new Point(100, IMAGE_HEIGHT-50), Core.FONT_HERSHEY_PLAIN, 3.0, new Scalar(255, 255, 255));
-                        }
+                    double area = rec.size.area();
+                    if(area < MIN_AREA){
+                        Notifier.v(getClass(), "Ignoring blob with area " + rec.size.area());
+                        continue;
                     }
 
-                    Utils.matToBitmap(rgbMat, outputCacheBitmap);
+                    double width = rec.size.width;
+                    double height = rec.size.height;
+                    if(Math.abs(rec.angle)%90 > 45){
+                        width = height;
+                        height = rec.size.width;
+                    }
 
-                    Message m = cvHandler.obtainMessage(HANDLER_NEWMAT, outputCacheBitmap);
-                    cvHandler.sendMessage(m);
-                }
+                    double ratio = width/height;
+                    if(ratio < ASPECT_RATIO - ASPECT_THRESHOLD || ratio > ASPECT_RATIO + ASPECT_THRESHOLD){
+                        Notifier.v(getClass(), "Ignoring blob with aspect ratio " + ratio);
+                        continue;
+                    }
+
+                    rec.points(rect_points);
+                    for( int j = 0; j < 4; j++ ) {
+                        Imgproc.line(rgbMat, rect_points[j], rect_points[(j+1)%4], RED);
+                        Imgproc.circle(rgbMat, rec.center, 4, RED);
+                    }
+
+                    double preAdjustedVerticalAngle = Math.atan((rec.center.y - HALF_IMAGE_HEIGHT)/focalLengthPixels);
+
+                    double verticalAngle = mCameraAngle-preAdjustedVerticalAngle;
+                    double distance = HEIGHT_DIFFERENCE/Math.tan(verticalAngle);
+
+                    double preAdjustedTurnAngle = Math.atan((rec.center.x - HALF_IMAGE_WIDTH)/focalLengthPixels);
+                    double turnAngle = Math.atan(Math.sin(preAdjustedTurnAngle)/(Math.cos(preAdjustedTurnAngle)*Math.cos(mCameraAngle))); //todo: optimize this math, getting rid of as many Math.* calls as possible
+
+                    Imgproc.putText(rgbMat, "Angle: " + Math.toDegrees(verticalAngle), textLines[0], Core.FONT_HERSHEY_PLAIN, 3.0, TEXT_COLOR);
+                    Imgproc.putText(rgbMat, "Dist: " + distance, textLines[1], Core.FONT_HERSHEY_PLAIN, 3.0, TEXT_COLOR);
+                    Imgproc.putText(rgbMat, "Turn: " + Math.toDegrees(turnAngle), textLines[2], Core.FONT_HERSHEY_PLAIN, 3.0, TEXT_COLOR);
+
+                    }
+
+                Utils.matToBitmap(rgbMat, outputCacheBitmap);
+
+                Message m = cvHandler.obtainMessage(HANDLER_NEWMAT, outputCacheBitmap); //todo: try to move this to another thread
+                cvHandler.sendMessage(m);
 
                 //clear up the queue, if needed
                 while(inputQueue.size() > 1){

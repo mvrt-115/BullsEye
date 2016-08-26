@@ -32,7 +32,7 @@ public class MainActivity extends AppCompatActivity  {
         MVRTCameraView cameraView = (MVRTCameraView)findViewById(R.id.mvrt_cameraview);
         ProcessingOutputView processingOutputView = (ProcessingOutputView)findViewById(R.id.mvrt_processingoutput);
 
-        socketServer = new OutputSocketServer(8887);
+        socketServer = new OutputSocketServer(5801);
         socketServer.start();
 
         bullseyeCameraManager = new BullseyeCameraManager(getApplicationContext(), cameraView, processingOutputView, socketServer);

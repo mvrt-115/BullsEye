@@ -28,7 +28,7 @@ import org.opencv.imgproc.Imgproc;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 public class CVProcessor implements SensorEventListener{
 
@@ -56,7 +56,8 @@ public class CVProcessor implements SensorEventListener{
 
     private int IMAGE_HEIGHT;
 
-    ConcurrentLinkedQueue<byte[]> inputQueue;
+    ConcurrentLinkedDeque<byte[]> inputQueue;
+    ConcurrentLinkedDeque<Long> timestampQueue;
 
     //region Thresholding Values
     final Scalar lowHSV = new Scalar(60, 90, 150);
@@ -75,7 +76,8 @@ public class CVProcessor implements SensorEventListener{
     }
 
     private CVProcessor(){
-        inputQueue = new ConcurrentLinkedQueue<>();
+        inputQueue = new ConcurrentLinkedDeque<>();
+        timestampQueue = new ConcurrentLinkedDeque<>();
     }
 
     public static CVProcessor getCvProcessor(){
@@ -134,8 +136,11 @@ public class CVProcessor implements SensorEventListener{
     }
 
 
-    public void processMat(byte[] input){
-        inputQueue.add(input);
+    public void processMat(byte[] input, long timestamp){
+        synchronized(this){
+            inputQueue.add(input);
+            timestampQueue.add(timestamp);
+        }
     }
 
     public void close(){
@@ -160,6 +165,7 @@ public class CVProcessor implements SensorEventListener{
     private class ProcessMat implements Runnable {
 
         byte[] inputData;
+        long currentImageTimestamp;
 
         final Scalar RED = new Scalar(255, 0, 0);
 
@@ -191,16 +197,23 @@ public class CVProcessor implements SensorEventListener{
             textLines[1] = new Point(100, IMAGE_HEIGHT-100);
             textLines[2] = new Point(100, IMAGE_HEIGHT-50);
 
-            outputBuffer = ByteBuffer.allocate(20);
+            outputBuffer = ByteBuffer.allocate(28);
         }
 
         @Override
         public void run() {
             Thread thread = Thread.currentThread();
             while(!thread.isInterrupted()){
-                inputData = inputQueue.poll();
 
-                if(inputData == null)continue;
+                if(inputQueue.isEmpty()){
+                    try { Thread.sleep(5); } catch (InterruptedException e) { e.printStackTrace(); }
+                    continue;
+                }
+
+                synchronized (this) {
+                    inputData = inputQueue.poll();
+                    currentImageTimestamp = timestampQueue.poll();
+                }
 
                 contours.clear();
 
@@ -253,6 +266,7 @@ public class CVProcessor implements SensorEventListener{
 
                     //todo: test to see how long this process takes, and if it should be moved to another thread
                     outputBuffer.clear();
+                    outputBuffer.putLong(System.currentTimeMillis()-currentImageTimestamp);
                     outputBuffer.putInt((int)distance);
                     outputBuffer.putDouble(verticalAngle);
                     outputBuffer.putDouble(turnAngle);
@@ -268,7 +282,10 @@ public class CVProcessor implements SensorEventListener{
 
                 //clear up the queue, if needed
                 while(inputQueue.size() > 1){
-                    inputQueue.remove();
+                    synchronized (this){
+                        inputQueue.removeLast();
+                        timestampQueue.removeLast();
+                    }
                 }
             }
         }

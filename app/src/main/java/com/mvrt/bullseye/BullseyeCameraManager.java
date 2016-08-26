@@ -215,7 +215,7 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
 
     @Override
     public void onImageCaptured(byte[] data) {
-        processor.processMat(data);
+        processor.processMat(data, System.currentTimeMillis());
     }
 
     public void onImgProcessed(Bitmap out) {

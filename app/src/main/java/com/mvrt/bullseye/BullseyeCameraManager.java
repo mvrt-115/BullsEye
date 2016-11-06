@@ -155,7 +155,7 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
     }
 
     public void openCamera(){
-        CameraUtils.openCamera(appContext, cameraManager, this);
+        CameraUtils.openCamera(appContext, cameraManager, this, mBackgroundHandler);
     }
 
     //region CameraUtils.CameraStateListener

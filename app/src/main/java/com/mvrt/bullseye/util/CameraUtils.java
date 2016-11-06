@@ -14,6 +14,7 @@ import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
@@ -136,14 +137,14 @@ public class CameraUtils {
      *  Prerequisites: Camera Permissions Granted
      *  Requires: Application {@link Context}, {@link CameraManager} instance
      </pre> */
-    public static void openCamera(Context appContext, CameraManager cameraManager, CameraStateListener cameraStateListener){
+    public static void openCamera(Context appContext, CameraManager cameraManager, CameraStateListener cameraStateListener, Handler handler){
         try {
             //explicit permissions check
             if (ActivityCompat.checkSelfPermission(appContext, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
                 Notifier.log(Log.ERROR, CameraUtils.class, "Permissions missing");
                 return;
             }
-            cameraManager.openCamera("0", new CameraStatusCallback(cameraStateListener), null);
+            cameraManager.openCamera("0", new CameraStatusCallback(cameraStateListener), handler);
         }catch(CameraAccessException e){
             Notifier.log(Log.ERROR, CameraUtils.class, e.getMessage());
         }
@@ -187,12 +188,12 @@ public class CameraUtils {
      * Prerequisites: OpenCV loaded, (Camera Permissions Granted), (Camera Opened), (Views initialized)
      * Requires: Capture size calculated, {@link CameraDevice} connected, {@link Surface Surface(s)} initialized
      </pre> */
-    public static void initCapture(Size captureSize, CameraDevice cameraDevice, CaptureCallbacks callbacks, Surface... surfaces){
+    public static void initCapture(Size captureSize, CameraDevice cameraDevice, CaptureCallbacks callbacks, Handler handler, Surface... surfaces){
         try {
             CaptureRequest.Builder cameraPreviewRequestBuilder =
                     callbacks.editCaptureRequest(cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW));
 
-            ImageReader imgReader = createImageReader(captureSize, callbacks);
+            ImageReader imgReader = createImageReader(captureSize, callbacks, handler);
 
             ArrayList<Surface> surfaceList = new ArrayList<>(Arrays.asList(surfaces));
             surfaceList.add(imgReader.getSurface());
@@ -202,21 +203,21 @@ public class CameraUtils {
             }
 
             //todo: check if passing the imgReader through callbacks causes any memory issues/leaks
-            cameraDevice.createCaptureSession(surfaceList, new PreviewCaptureStateCallback(callbacks, cameraPreviewRequestBuilder, imgReader), null);
+            cameraDevice.createCaptureSession(surfaceList, new PreviewCaptureStateCallback(callbacks, cameraPreviewRequestBuilder, imgReader), handler);
         }catch(CameraAccessException e){
             Notifier.log(Log.ERROR, CameraUtils.class, e.getMessage());
         }
     }
 
     /** <pre>
-     * Starts capturing images from the camera, and to the Surfaces provided to {@link #initCapture(Size, CameraDevice, CaptureCallbacks, Surface...)}.
+     * Starts capturing images from the camera, and to the Surfaces provided to {@link #initCapture(Size, CameraDevice, CaptureCallbacks, Handler, Surface...)}.
      * Requires: A configured {@link CameraCaptureSession} (and {@link CaptureRequest.Builder}).
-     * @see #initCapture(Size, CameraDevice, CaptureCallbacks, Surface...)
+     * @see #initCapture(Size, CameraDevice, CaptureCallbacks, Handler, Surface...)
     </pre> */
-    public static void startCapture(CameraCaptureSession session, CaptureRequest.Builder previewRequestBuilder){
+    public static void startCapture(CameraCaptureSession session, CaptureRequest.Builder previewRequestBuilder, Handler handler){
         CaptureRequest cameraPreviewRequest = previewRequestBuilder.build();
         try {
-            session.setRepeatingRequest(cameraPreviewRequest, captureCallback, null);
+            session.setRepeatingRequest(cameraPreviewRequest, captureCallback, handler);
         } catch (CameraAccessException e) { e.printStackTrace(); }
     }
 
@@ -269,9 +270,9 @@ public class CameraUtils {
      * Prerequisite: OpenCV Loaded
      * Requires: Capture size calculated.
      </pre> */
-    private static ImageReader createImageReader(Size imageSize, CaptureCallbacks callbacks){
+    private static ImageReader createImageReader(Size imageSize, CaptureCallbacks callbacks, Handler handler){
         ImageReader imageReader = ImageReader.newInstance(imageSize.getWidth(), imageSize.getHeight(), ImageFormat.YUV_420_888, 2);
-        imageReader.setOnImageAvailableListener(new ImageReaderListener(callbacks), null);
+        imageReader.setOnImageAvailableListener(new ImageReaderListener(callbacks), handler);
         return imageReader;
     }
 

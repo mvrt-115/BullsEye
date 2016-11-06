@@ -11,6 +11,9 @@ import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.ImageReader;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.Looper;
 import android.util.Size;
 import android.util.SizeF;
 import android.view.Surface;
@@ -36,6 +39,9 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
     ProcessingOutputView outputView;
     CVProcessor processor;
 
+    HandlerThread mBackgroundThread;
+    Handler mBackgroundHandler;
+
     private boolean readyToOpenCamera = false;
 
     public BullseyeCameraManager(Context appContext, MVRTCameraView mvrtCameraView, ProcessingOutputView outputView, OutputSocketServer socketServer){
@@ -48,8 +54,8 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
 
     public void init(){
         processor.setProcessedMatListener(this);
+        startBackgroundThread();
     }
-
 
     public void pause(){
         if(cameraDevice != null){
@@ -65,13 +71,11 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
 
         cameraView.releaseSurface();
 
-        if(processor != null){
-            processor.close();
-        }
-
+        stopBackgroundThread();
     }
 
     public void resume(){
+        startBackgroundThread();
         if(readyToOpenCamera){
            openCamera();
         }
@@ -90,16 +94,36 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
 
         cameraView.releaseSurface();
 
-        if(processor != null) {
-            processor.close();
-        }
-
         if(imageReader != null){
             imageReader.close();
             imageReader = null;
         }
+
+        stopBackgroundThread();
     }
 
+    /**
+     * Starts a background thread and its {@link Handler}.
+     */
+    private void startBackgroundThread() {
+        mBackgroundThread = new HandlerThread("CameraBackground");
+        mBackgroundThread.start();
+        mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
+    }
+
+    /**
+     * Stops the background thread and its {@link Handler}.
+     */
+    private void stopBackgroundThread() {
+        mBackgroundThread.quitSafely();
+        try {
+            mBackgroundThread.join();
+            mBackgroundThread = null;
+            mBackgroundHandler = null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
 
     @Override
     public void onCameraPermissionsGranted(CameraManager manager) {
@@ -170,7 +194,7 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
 
     public void initCapture(){
         Notifier.v(getClass(), "Initializing Capture, previewSurface = " + previewSurface.toString() + ", " + previewSurface.isValid());
-        CameraUtils.initCapture(imageReaderSize, cameraDevice, this, previewSurface);
+        CameraUtils.initCapture(imageReaderSize, cameraDevice, this, mBackgroundHandler, previewSurface);
     }
 
     long exposureTime = 5 * 1000 * 1000;
@@ -210,7 +234,7 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
     }
 
     public void startCapture(){
-        CameraUtils.startCapture(cameraCaptureSession, cameraCaptureRequestBuilder);
+        CameraUtils.startCapture(cameraCaptureSession, cameraCaptureRequestBuilder, mBackgroundHandler);
     }
 
     @Override

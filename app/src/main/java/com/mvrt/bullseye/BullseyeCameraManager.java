@@ -163,7 +163,14 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
     public void onCameraConnected(CameraDevice cameraDevice) {
         this.cameraDevice = cameraDevice;
         Notifier.v(getClass(), "Camera Device Connected, id:" + cameraDevice.getId());
-        initViews();
+
+        (new Handler(Looper.getMainLooper())).post(new Runnable() {
+            @Override
+            public void run() {
+                initViews();
+            }
+        });
+
     }
 
     @Override

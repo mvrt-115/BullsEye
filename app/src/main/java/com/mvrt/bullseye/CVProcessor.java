@@ -141,7 +141,7 @@ public class CVProcessor implements SensorEventListener{
     Point[] rect_points;
     Point[] textLines;
 
-    public void processMat(byte[] input, long timestamp){
+    public void processMat(byte[] input, long timestamp, ProcessingOutputView processingOutputView){
         contours.clear();
 
         getImageData(input, yuvMat, rgbMat);
@@ -206,6 +206,8 @@ public class CVProcessor implements SensorEventListener{
 
         if(mProcessedMatListener != null)
             mProcessedMatListener.onImgProcessed(outputCacheBitmap);
+
+        processingOutputView.setBitmap(outputCacheBitmap);
     }
 
     @Override

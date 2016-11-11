@@ -2,6 +2,7 @@ package com.mvrt.bullseye;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.ImageFormat;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -246,11 +247,16 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
 
     @Override
     public void onImageCaptured(byte[] data) {
-        processor.processMat(data, System.currentTimeMillis());
+        processor.processMat(data, System.currentTimeMillis(), outputView);
     }
 
-    public void onImgProcessed(Bitmap out) {
-        outputView.setBitmap(out);
+    public void onImgProcessed(final Bitmap out) {
+//        (new Handler(Looper.getMainLooper())).post(new Runnable() {
+//            @Override
+//            public void run() {
+//                outputView.setBitmap(out);
+//            }
+//        });
     }
 
     //endregion

@@ -67,6 +67,7 @@ public class ProcessingOutputView extends SurfaceView implements SurfaceHolder.C
         canvas.drawBitmap(bitmap, new Rect(0,0,bitmap.getWidth(),bitmap.getHeight()),
                 new Rect(0,0,canvas.getWidth(),canvas.getHeight()), null);
         surfaceHolder.unlockCanvasAndPost(canvas);
+        postInvalidate();
     }
 
     /**d

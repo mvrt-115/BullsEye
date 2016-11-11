@@ -1,6 +1,7 @@
 package com.mvrt.bullseye;
 
 import android.Manifest;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.hardware.camera2.CameraManager;
@@ -8,10 +9,15 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.DialogFragment;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
+import android.support.v7.widget.LinearLayoutCompat;
+import android.view.Gravity;
 import android.view.View;
+import android.view.WindowManager;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
 
 import com.mvrt.bullseye.util.Notifier;
 
@@ -32,6 +38,8 @@ public class MainActivity extends AppCompatActivity  {
         MVRTCameraView cameraView = (MVRTCameraView)findViewById(R.id.mvrt_cameraview);
         ProcessingOutputView processingOutputView = (ProcessingOutputView)findViewById(R.id.mvrt_processingoutput);
 
+        setupOptionButtons();
+
         socketServer = new OutputSocketServer(5801);
         socketServer.start();
 
@@ -44,6 +52,16 @@ public class MainActivity extends AppCompatActivity  {
 
         initCameraPerms();
 
+    }
+
+    private void setupOptionButtons() {
+        ImageButton settingsDrawer = (ImageButton) findViewById(R.id.imagebutton_settingsdrawer);
+        settingsDrawer.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showSettingsDrawer();
+            }
+        });
     }
 
     @Override
@@ -72,7 +90,11 @@ public class MainActivity extends AppCompatActivity  {
     private void setUIFlags() {
         getWindow().getDecorView().setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_FULLSCREEN);
+
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
+                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
+
 
     /**
      * Initializes camera by ensuring permissions are granted, then
@@ -109,6 +131,24 @@ public class MainActivity extends AppCompatActivity  {
 
     public interface CameraPermissionsListener{
         void onCameraPermissionsGranted(CameraManager manager);
+    }
+
+    public void showSettingsDrawer() {
+        View dialogView = getLayoutInflater().inflate(R.layout.settings_drawer, null);
+
+        Dialog d = new Dialog(this);
+        d.setContentView(dialogView);
+        d.setCancelable(true);
+        d.getWindow().setLayout(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        d.getWindow().setGravity(Gravity.BOTTOM);
+
+        /* The following code allows us to remain in immersive mode when the dialog opens. Treat like magic. */
+        d.getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);
+        d.show(); //oh, and show the dialog
+        d.getWindow().getDecorView().setSystemUiVisibility(this.getWindow().getDecorView().getSystemUiVisibility());
+        d.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);
+        /* End magic */
+
     }
 
 

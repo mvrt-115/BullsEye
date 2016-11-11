@@ -3,14 +3,13 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:keepScreenOn="true"
     android:fitsSystemWindows="false"
     tools:context="com.mvrt.bullseye.MainActivity">
 
     <RelativeLayout
         android:layout_width="match_parent"
+        android:background="@color/colorBackground"
         android:layout_height="match_parent">
-
 
         <com.mvrt.bullseye.ProcessingOutputView
             android:layout_width="match_parent"
@@ -25,6 +24,21 @@
             android:layout_alignParentEnd="true"
             android:layout_alignParentBottom="true"
             android:id="@+id/mvrt_cameraview" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            android:elevation="5dp"
+            android:padding="5dp">
+            <ImageButton
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@android:color/transparent"
+                android:src="@drawable/ic_settings_brightness_white_48dp"
+                android:id="@+id/imagebutton_settingsdrawer"/>
+        </LinearLayout>
+
 
     </RelativeLayout>
 

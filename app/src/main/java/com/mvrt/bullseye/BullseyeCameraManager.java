@@ -210,6 +210,8 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
 
     public CaptureRequest.Builder configureCaptureRequest(CaptureRequest.Builder requestBuilder){
         requestBuilder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_OFF);
+        requestBuilder.set(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE, CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF);
+        requestBuilder.set(CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE, CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_OFF);
         requestBuilder.set(CaptureRequest.LENS_FOCUS_DISTANCE, 0.0f);
         requestBuilder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, exposureTime);
         requestBuilder.set(CaptureRequest.SENSOR_SENSITIVITY, iso);

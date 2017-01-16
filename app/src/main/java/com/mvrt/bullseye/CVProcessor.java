@@ -46,15 +46,38 @@ public class CVProcessor implements SensorEventListener{
 
     private int IMAGE_HEIGHT;
 
+    private double angle1, angle2;
+    private double rect1X, rect1Y;
+    private double rect2X, rect2Y;
+
     //region Thresholding Values
+    //final Scalar lowHSV = new Scalar(60, 90, 150);
+    //final Scalar highHSV = new Scalar(85, 255, 255);
+
+    //final Scalar lowHSV = new Scalar(70, 120, 180); these juans are good
+    //final Scalar highHSV = new Scalar(80, 255, 255);
+
     final Scalar lowHSV = new Scalar(60, 90, 150);
     final Scalar highHSV = new Scalar(85, 255, 255);
 
-    final int MIN_AREA = 5000;
+//    final Scalar lowHSV = new Scalar(0, 0, 150);
+//    final Scalar highHSV = new Scalar(180, 255, 225);
 
-    final double ASPECT_RATIO = 1.8;
-    final double ASPECT_THRESHOLD = 0.5;
-    //endregion
+    //final Scalar lowHSV = new Scalar(80, 220, 75);
+    //final Scalar highHSV = new Scalar(105, 255, 255);
+
+
+    final int MIN_AREA = 1000;
+    final int MAX_AREA = 3000;
+
+    final double ASPECT_RATIO = 2.0/5.0;
+    final double ASPECT_THRESHOLD = 0.25;
+
+    final double WIDTH_RATIO = 10.25/5.0;
+    final double WIDTH_RATIO_THRESHOLD = 0.5;
+
+
+//    //endregion
 
     final Scalar RED = new Scalar(255, 0, 0);
     final Scalar TEXT_COLOR = new Scalar(255, 255, 255);
@@ -149,48 +172,55 @@ public class CVProcessor implements SensorEventListener{
         Core.inRange(hsvMat, lowHSV, highHSV, filterMat);
 
         Imgproc.findContours(filterMat, contours, heirarchyMat, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+        //Log.d("MVRT", "Number of contours: " + contours.size());
 
-        for(MatOfPoint mop : contours){
-            mop.convertTo(matOfPoint2f, CvType.CV_32FC2);
-            RotatedRect rec = Imgproc.minAreaRect(matOfPoint2f);
 
-            double area = rec.size.area();
-            if(area < MIN_AREA){
-                Notifier.v(getClass(), "Ignoring blob with area " + rec.size.area());
-                continue;
+        RotatedRect maxRect1 = null;
+        RotatedRect maxRect2 = null;
+        if(contours.size() < 2)
+            System.out.println("Not enough contours found");
+        else {
+            for (MatOfPoint mop : contours) {
+                mop.convertTo(matOfPoint2f, CvType.CV_32FC2);
+                RotatedRect rec = Imgproc.minAreaRect(matOfPoint2f);
+
+                rec.points(rect_points);
+
+                double tempArea = rec.size.area();
+
+                if(maxRect1 == null || tempArea > maxRect1.size.area()) {
+                    maxRect2 = maxRect1;
+                    maxRect1 = rec;
+                }
+                else if (maxRect2 == null || tempArea > maxRect2.size.area()) {
+                    maxRect2 = rec;
+                }
+
             }
+            System.out.println(maxRect1.size.area() + " " + maxRect2.size.area());
+            drawRect(maxRect1);
+            drawRect(maxRect2);
 
-            double width = rec.size.width;
-            double height = rec.size.height;
-            if(Math.abs(rec.angle)%90 > 45){
-                width = height;
-                height = rec.size.width;
-            }
+            angle1 = getAngle(maxRect1);
+            angle2 = getAngle(maxRect2);
+            Imgproc.putText(filterMat, "Turn:" + (angle1 + angle2) / 2, new Point(250, 50), Core.FONT_HERSHEY_PLAIN, 2.0, TEXT_COLOR);
 
-            double ratio = width/height;
-            if(ratio < ASPECT_RATIO - ASPECT_THRESHOLD || ratio > ASPECT_RATIO + ASPECT_THRESHOLD){
-                Notifier.v(getClass(), "Ignoring blob with aspect ratio " + ratio);
-                continue;
-            }
+            rect1X = maxRect1.center.x;
+            rect1Y = maxRect1.center.y;
+            rect2X = maxRect2.center.x;
+            rect2Y = maxRect2.center.y;
 
-            rec.points(rect_points);
-            for( int j = 0; j < 4; j++ ) {
-                Imgproc.line(rgbMat, rect_points[j], rect_points[(j+1)%4], RED);
-                Imgproc.circle(rgbMat, rec.center, 4, RED);
-            }
+            Point p = new Point((rect1X + rect2X) / 2, (rect1Y + rect2Y) / 2);
 
-            double preAdjustedVerticalAngle = Math.atan((rec.center.y - HALF_IMAGE_HEIGHT)/focalLengthPixels);
+            Imgproc.circle(filterMat, p, 5, RED);
+        }
 
-            double verticalAngle = mCameraAngle-preAdjustedVerticalAngle;
-            double distance = HEIGHT_DIFFERENCE/Math.tan(verticalAngle);
 
-            double preAdjustedTurnAngle = Math.atan((rec.center.x - HALF_IMAGE_WIDTH)/focalLengthPixels);
-            double turnAngle = Math.atan(Math.sin(preAdjustedTurnAngle)/(Math.cos(preAdjustedTurnAngle)*Math.cos(mCameraAngle))); //todo: optimize this math, getting rid of as many Math.* calls as possible
+                //}
+            //}
 
-            Imgproc.putText(rgbMat, "Angle: " + Math.toDegrees(verticalAngle), textLines[0], Core.FONT_HERSHEY_PLAIN, 3.0, TEXT_COLOR);
-            Imgproc.putText(rgbMat, "Dist: " + distance, textLines[1], Core.FONT_HERSHEY_PLAIN, 3.0, TEXT_COLOR);
-            Imgproc.putText(rgbMat, "Turn: " + Math.toDegrees(turnAngle), textLines[2], Core.FONT_HERSHEY_PLAIN, 3.0, TEXT_COLOR);
 
+            //region buffer
             //todo: test to see how long this process takes, and if it should be moved to another thread
             /*outputBuffer.clear();
             outputBuffer.putLong(System.currentTimeMillis()-timestamp);
@@ -199,15 +229,28 @@ public class CVProcessor implements SensorEventListener{
             outputBuffer.putDouble(turnAngle);
             if(outputSocketServer != null){
                 outputSocketServer.sendToAll(outputBuffer.array());
-            }*/
-        }
+            } */
+            //endregion
+        //}
 
-        Utils.matToBitmap(rgbMat, outputCacheBitmap);
+        Utils.matToBitmap(filterMat, outputCacheBitmap);
 
         if(mProcessedMatListener != null)
             mProcessedMatListener.onImgProcessed(outputCacheBitmap);
 
         processingOutputView.setBitmap(outputCacheBitmap);
+    }
+
+    private double getAngle(RotatedRect rect) {
+        double preAdjustedTurnAngle = Math.atan((rect.center.x - HALF_IMAGE_WIDTH)/focalLengthPixels);
+        return Math.toDegrees(preAdjustedTurnAngle);
+    }
+
+    private void drawRect(RotatedRect rect) {
+        rect.points(rect_points);
+        for(int j=0; j<4; j++){
+            Imgproc.line(filterMat, rect_points[j], rect_points[(j+1)%4], TEXT_COLOR);
+        }
     }
 
     @Override

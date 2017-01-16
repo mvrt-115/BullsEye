@@ -51,33 +51,15 @@ public class CVProcessor implements SensorEventListener{
     private double rect2X, rect2Y;
 
     //region Thresholding Values
-    //final Scalar lowHSV = new Scalar(60, 90, 150);
-    //final Scalar highHSV = new Scalar(85, 255, 255);
-
-    //final Scalar lowHSV = new Scalar(70, 120, 180); these juans are good
-    //final Scalar highHSV = new Scalar(80, 255, 255);
-
     final Scalar lowHSV = new Scalar(60, 90, 150);
     final Scalar highHSV = new Scalar(85, 255, 255);
-
-//    final Scalar lowHSV = new Scalar(0, 0, 150);
-//    final Scalar highHSV = new Scalar(180, 255, 225);
-
-    //final Scalar lowHSV = new Scalar(80, 220, 75);
-    //final Scalar highHSV = new Scalar(105, 255, 255);
-
 
     final int MIN_AREA = 1000;
     final int MAX_AREA = 3000;
 
     final double ASPECT_RATIO = 2.0/5.0;
     final double ASPECT_THRESHOLD = 0.25;
-
-    final double WIDTH_RATIO = 10.25/5.0;
-    final double WIDTH_RATIO_THRESHOLD = 0.5;
-
-
-//    //endregion
+    //endregion
 
     final Scalar RED = new Scalar(255, 0, 0);
     final Scalar TEXT_COLOR = new Scalar(255, 255, 255);
@@ -86,10 +68,6 @@ public class CVProcessor implements SensorEventListener{
 
     static{
         cvProcessor = new CVProcessor();
-    }
-
-    private CVProcessor(){
-
     }
 
     public static CVProcessor getCvProcessor(){
@@ -172,8 +150,6 @@ public class CVProcessor implements SensorEventListener{
         Core.inRange(hsvMat, lowHSV, highHSV, filterMat);
 
         Imgproc.findContours(filterMat, contours, heirarchyMat, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
-        //Log.d("MVRT", "Number of contours: " + contours.size());
-
 
         RotatedRect maxRect1 = null;
         RotatedRect maxRect2 = null;
@@ -197,6 +173,7 @@ public class CVProcessor implements SensorEventListener{
                 }
 
             }
+
             System.out.println(maxRect1.size.area() + " " + maxRect2.size.area());
             drawRect(maxRect1);
             drawRect(maxRect2);
@@ -213,12 +190,6 @@ public class CVProcessor implements SensorEventListener{
             Point p = new Point((rect1X + rect2X) / 2, (rect1Y + rect2Y) / 2);
 
             Imgproc.circle(filterMat, p, 5, RED);
-        }
-
-
-                //}
-            //}
-
 
             //region buffer
             //todo: test to see how long this process takes, and if it should be moved to another thread
@@ -231,7 +202,7 @@ public class CVProcessor implements SensorEventListener{
                 outputSocketServer.sendToAll(outputBuffer.array());
             } */
             //endregion
-        //}
+        }
 
         Utils.matToBitmap(filterMat, outputCacheBitmap);
 

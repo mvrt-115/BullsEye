@@ -6,6 +6,7 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.hardware.camera2.CaptureRequest;
 import android.util.Log;
 import android.util.Size;
 import android.util.SizeF;
@@ -105,7 +106,7 @@ public class CVProcessor implements SensorEventListener{
         textLines[1] = new Point(100, IMAGE_HEIGHT-100);
         textLines[2] = new Point(100, IMAGE_HEIGHT-50);
 
-        outputBuffer = ByteBuffer.allocate(28);
+        outputBuffer = ByteBuffer.allocate(60);
 
         Notifier.startSection("CVProcessor Initialized");
         Notifier.s("Image Size: " + size.toString());
@@ -153,6 +154,7 @@ public class CVProcessor implements SensorEventListener{
 
         RotatedRect maxRect1 = null;
         RotatedRect maxRect2 = null;
+
         if(contours.size() < 2)
             System.out.println("Not enough contours found");
         else {
@@ -160,7 +162,7 @@ public class CVProcessor implements SensorEventListener{
                 mop.convertTo(matOfPoint2f, CvType.CV_32FC2);
                 RotatedRect rec = Imgproc.minAreaRect(matOfPoint2f);
 
-                rec.points(rect_points);
+//                rec.points(rect_points);
 
                 double tempArea = rec.size.area();
 
@@ -175,11 +177,23 @@ public class CVProcessor implements SensorEventListener{
             }
 
             System.out.println(maxRect1.size.area() + " " + maxRect2.size.area());
+
             drawRect(maxRect1);
+
+            for(int j=0; j<4; j++){
+                Imgproc.line(filterMat, rect_points[j], rect_points[(j+1)%4], TEXT_COLOR);
+            }
+
             drawRect(maxRect2);
+
+            for(int j=0; j<4; j++){
+                Imgproc.line(filterMat, rect_points[j], rect_points[(j+1)%4], TEXT_COLOR);
+            }
+
 
             angle1 = getAngle(maxRect1);
             angle2 = getAngle(maxRect2);
+
             Imgproc.putText(filterMat, "Turn:" + (angle1 + angle2) / 2, new Point(250, 50), Core.FONT_HERSHEY_PLAIN, 2.0, TEXT_COLOR);
 
             rect1X = maxRect1.center.x;
@@ -188,20 +202,19 @@ public class CVProcessor implements SensorEventListener{
             rect2Y = maxRect2.center.y;
 
             Point p = new Point((rect1X + rect2X) / 2, (rect1Y + rect2Y) / 2);
-
             Imgproc.circle(filterMat, p, 5, RED);
 
             //region buffer
             //todo: test to see how long this process takes, and if it should be moved to another thread
-            /*outputBuffer.clear();
+            outputBuffer.clear();
             outputBuffer.putLong(System.currentTimeMillis()-timestamp);
-            outputBuffer.putInt((int)distance);
-            outputBuffer.putDouble(verticalAngle);
-            outputBuffer.putDouble(turnAngle);
+            outputBuffer.putDouble(getDistance(maxRect1, maxRect2));
+            outputBuffer.putDouble((angle1+angle2)/2);
             if(outputSocketServer != null){
                 outputSocketServer.sendToAll(outputBuffer.array());
-            } */
+            }
             //endregion
+
         }
 
         Utils.matToBitmap(filterMat, outputCacheBitmap);
@@ -212,16 +225,28 @@ public class CVProcessor implements SensorEventListener{
         processingOutputView.setBitmap(outputCacheBitmap);
     }
 
+
+
     private double getAngle(RotatedRect rect) {
         double preAdjustedTurnAngle = Math.atan((rect.center.x - HALF_IMAGE_WIDTH)/focalLengthPixels);
         return Math.toDegrees(preAdjustedTurnAngle);
     }
 
+    private double getDistance(RotatedRect rect1, RotatedRect rect2) {
+        double w1Pixel = rect1.size.width;
+        double w2Pixel = rect2.size.width;
+        double totalWidth = Math.sqrt(Math.pow(rect1.center.x - rect2.center.x, 2.0) + Math.pow(rect1.center.y - rect2.center.y, 2.0));
+        totalWidth += w1Pixel/2.0 + w2Pixel/2.0;
+
+        double wReal = 10.25; //10.25 inches in real life
+
+        double hyp = (wReal * focalLengthPixels) / totalWidth; //in inches
+        double hReal = 10.75 + 2.5;
+        return Math.sqrt(Math.pow(hyp, 2.0) + Math.pow(hReal, 2.0));
+    }
+
     private void drawRect(RotatedRect rect) {
         rect.points(rect_points);
-        for(int j=0; j<4; j++){
-            Imgproc.line(filterMat, rect_points[j], rect_points[(j+1)%4], TEXT_COLOR);
-        }
     }
 
     @Override

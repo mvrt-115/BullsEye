@@ -205,8 +205,8 @@ public class BullseyeCameraManager implements MainActivity.CameraPermissionsList
         CameraUtils.initCapture(imageReaderSize, cameraDevice, this, mBackgroundHandler, previewSurface);
     }
 
-    long exposureTime = 5 * 1000 * 1000;
-    int iso = 100;
+    long exposureTime = 1000 * 1000;
+    int iso = 300;
 
     public CaptureRequest.Builder configureCaptureRequest(CaptureRequest.Builder requestBuilder){
         requestBuilder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_OFF);
